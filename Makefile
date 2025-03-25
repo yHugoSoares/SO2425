@@ -13,6 +13,10 @@ RESULT_DIR = resultados
 SRC_FILES = \
 	$(SRC_DIR)/client.c \
 	$(SRC_DIR)/server.c \
+	$(SRC_DIR)/cache_management.c \
+	$(SRC_DIR)/document_operations.c \
+	$(SRC_DIR)/search_operations.c \
+
 
 # Object files
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRC_FILES))
