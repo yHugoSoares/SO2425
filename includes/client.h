@@ -20,4 +20,3 @@ void search_documents(const char *keyword, const char *nr_processes);
 void shutdown_server();
 
 #endif /* CLIENT_H */
-

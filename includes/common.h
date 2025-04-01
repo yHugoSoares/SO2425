@@ -1,3 +1,4 @@
+// filepath: includes/common.h
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -50,5 +51,12 @@ typedef struct {
     int doc_key;
 } Response;
 
-#endif /* COMMON_H */
+// Global variables (declared as extern)
+extern char document_folder[256];
+extern int cache_size;
+extern Document *documents;
+extern int num_documents;
+extern int next_key;
+extern int global_time;
 
+#endif /* COMMON_H */

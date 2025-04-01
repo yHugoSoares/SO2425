@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../include/cache_management.h"
+#include "cache_management.h"
 
 void update_cache(int doc_index) {
     // Update access statistics

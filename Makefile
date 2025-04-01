@@ -1,49 +1,44 @@
-# Compiler and flags
-CC = gcc
-CFLAGS = -Wall -Werror
+# ========== TOOLCHAIN ==========
+CC      = gcc
+CFLAGS  = -Wall -Werror -Iincludes
+LDFLAGS = 
 
-# Directories
-SRC_DIR = src
+# ========== PROJECT STRUCTURE ==========
+SRC_DIR   = src
 BUILD_DIR = build
-EXEC_DIR = executables
-INCLUDE_DIR = include
-RESULT_DIR = resultados
+EXEC_DIR  = executables
+RES_DIR   = resultados
 
-# Source files
-SRC_FILES = \
-	$(SRC_DIR)/client.c \
-	$(SRC_DIR)/server.c \
-	$(SRC_DIR)/cache_management.c \
-	$(SRC_DIR)/document_operations.c \
-	$(SRC_DIR)/search_operations.c \
+# ========== AUTOMATED FILE LISTS ==========
+SRCS      = $(wildcard $(SRC_DIR)/*.c)
+CLIENT_OBJ= $(BUILD_DIR)/client.o 
+SERVER_OBJ= $(BUILD_DIR)/server.o
+COMMON_OBJ= $(BUILD_DIR)/common.o
 
+# ========== BUILD TARGETS ==========
+.PHONY: all clean
 
-# Object files
-OBJ_FILES = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRC_FILES))
+all: $(EXEC_DIR)/client $(EXEC_DIR)/server
 
-# Executables
-CLIENT_EXEC = $(EXEC_DIR)/client
-SERVER_EXEC = $(EXEC_DIR)/server
+$(EXEC_DIR)/client: $(CLIENT_OBJ) $(COMMON_OBJ)
+	@mkdir -p $(@D)
+	@echo "\033[0;34m[CLIENT]\033[0m 🔗 Linking $@"
+	@$(CC) $^ -o $@ $(LDFLAGS)
 
-# Build rules
-all: $(CLIENT_EXEC) $(SERVER_EXEC)
-
-$(CLIENT_EXEC): $(BUILD_DIR)/client.o
-	@mkdir -p $(EXEC_DIR)
-	$(CC) $(BUILD_DIR)/client.o -o $(CLIENT_EXEC) $(LDFLAGS)
-
-$(SERVER_EXEC): $(BUILD_DIR)/server.o
-	@mkdir -p $(EXEC_DIR)
-	$(CC) $(BUILD_DIR)/server.o -o $(SERVER_EXEC) $(LDFLAGS)
+$(EXEC_DIR)/server: $(SERVER_OBJ) $(COMMON_OBJ)
+	@mkdir -p $(@D)
+	@echo "\033[0;35m[SERVER]\033[0m 🔗 Linking $@"
+	@$(CC) $^ -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	@mkdir -p $(@D)
+	@echo "\033[0;36m[COMPILE]\033[0m 📦 $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
+# ========== CLEANER ==========
 clean:
-	@echo "[CLEAN] Cleaning build directory."
-	rm -rf $(BUILD_DIR) $(EXEC_DIR)
-	@echo "[CLEAN] Cleaning resultados directory."
-	rm -rf $(RESULT_DIR)/*
+	@echo "\033[0;33m[CLEAN]\033[0m 🧹 Removing artifacts..."
+	@rm -rfv $(BUILD_DIR) $(EXEC_DIR) $(RES_DIR)/* | sed 's/^/  /'
+	@echo "\033[0;32m[SUCCESS]\033[0m ✅ Project spotless!\n"
 
-.PHONY: all clean
+.DEFAULT_GOAL = all

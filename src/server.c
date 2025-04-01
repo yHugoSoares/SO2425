@@ -1,13 +1,5 @@
 #include "server.h"
 
-// Global variables
-char document_folder[256];
-int cache_size;
-Document *documents = NULL;
-int num_documents = 0;
-int next_key = 1;
-int server_running = 1;
-int global_time = 0; // For LRU cache policy
 
 // Signal handler for graceful shutdown
 void handle_signal(int sig) {
