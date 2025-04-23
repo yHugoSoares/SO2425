@@ -1,9 +1,9 @@
 # Sistemas Operativos Project
 
 ## Authors
-- Hugo
-- Author 2
-- Author 3
+- Hugo Soares
+- Francisco Martins
+- Jorge Barbosa
 
 ## Project Overview
 This project is part of the Sistemas Operativos (Operating Systems) course. The goal of the project is to [].
