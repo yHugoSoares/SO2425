@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     const char *op = argv[1];
 
     if (strcmp(op, "-a") == 0) {
-        // Add document
+        
         if (argc != 6) {
             fprintf(stderr, "Usage: %s -a \"title\" \"authors\" \"year\" \"path\"\n", argv[0]);
             return 1;
