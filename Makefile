@@ -1,12 +1,12 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Werror
+CFLAGS = -Wall -Werror -I$(INCLUDE_DIR)
 
 # Directories
 SRC_DIR = src
 BUILD_DIR = build
 EXEC_DIR = executables
-INCLUDE_DIR = include
+INCLUDE_DIR = includes
 RESULT_DIR = resultados
 
 # Source files

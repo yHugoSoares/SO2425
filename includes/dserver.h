@@ -12,14 +12,10 @@
 #include <errno.h>
 #include <signal.h>
 #include <time.h>
+#include "common.h"
 
+void sigint_handler(int sig);
 
-// Global variables
-extern char document_folder[256];
-extern int cache_size;
-extern int num_documents;
-extern int next_key;
-extern int server_running;
-extern int global_time;
+int main(int argc, char *argv[]);
 
 #endif /* SERVER_H */
