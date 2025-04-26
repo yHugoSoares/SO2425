@@ -11,30 +11,27 @@ RESULT_DIR = resultados
 
 # Source files
 SRC_FILES = \
-	$(SRC_DIR)/client.c \
-	$(SRC_DIR)/server.c \
-	$(SRC_DIR)/cache_management.c \
-	$(SRC_DIR)/document_operations.c \
-	$(SRC_DIR)/search_operations.c \
+	$(SRC_DIR)/dclient.c \
+	$(SRC_DIR)/dserver.c
 
 
 # Object files
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRC_FILES))
 
 # Executables
-CLIENT_EXEC = $(EXEC_DIR)/client
-SERVER_EXEC = $(EXEC_DIR)/server
+CLIENT_EXEC = $(EXEC_DIR)/dclient
+SERVER_EXEC = $(EXEC_DIR)/dserver
 
 # Build rules
 all: $(CLIENT_EXEC) $(SERVER_EXEC)
 
-$(CLIENT_EXEC): $(BUILD_DIR)/client.o
+$(CLIENT_EXEC): $(BUILD_DIR)/dclient.o
 	@mkdir -p $(EXEC_DIR)
-	$(CC) $(BUILD_DIR)/client.o -o $(CLIENT_EXEC) $(LDFLAGS)
+	$(CC) $(BUILD_DIR)/dclient.o -o $(CLIENT_EXEC) $(LDFLAGS)
 
-$(SERVER_EXEC): $(BUILD_DIR)/server.o
+$(SERVER_EXEC): $(BUILD_DIR)/dserver.o
 	@mkdir -p $(EXEC_DIR)
-	$(CC) $(BUILD_DIR)/server.o -o $(SERVER_EXEC) $(LDFLAGS)
+	$(CC) $(BUILD_DIR)/dserver.o -o $(SERVER_EXEC) $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)

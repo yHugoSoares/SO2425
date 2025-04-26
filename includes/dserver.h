@@ -1,5 +1,5 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef DSERVER_H
+#define DSERVER_H
 
 #include <stdio.h>
 #include <stdlib.h>
