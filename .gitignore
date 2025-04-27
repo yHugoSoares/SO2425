@@ -53,3 +53,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Ignore DataSet and Gdataset folder
+DataSet/
+Gdataset/
+
+# Ignore .dat
+*.dat

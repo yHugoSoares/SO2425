@@ -1,4 +1,4 @@
-// src/main_client.c
+// src/dclient.c
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +13,7 @@ void prepararPedido(int argc, char *argv[], MensagemCliente *pedido) {
     // adicionar 
     if (strcmp(argv[1], "-a") == 0) { 
         if (argc != 6) {
-            fprintf(stderr, "Uso: %s -a \"title\" \"authors\" \"year\" \"path\"\n", argv[0]);
+            fprintf(stderr, "Uso: %s -a \"title\" \"authors\" \"year\" \"file(path)\"\n", argv[0]);
             exit(EXIT_FAILURE);
         }
         pedido->operacao = 'a';
@@ -107,4 +107,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-

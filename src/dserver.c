@@ -1,3 +1,5 @@
+// src/dserver.c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +8,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <signal.h>
-#include "common.h"  
+#include "common.h"
+#include "handle_request.h"
+#include "cache.h"
 
 #define FIFO_SERVER "/tmp/server_fifo"
 
@@ -16,6 +20,7 @@ volatile sig_atomic_t running = 1;
 void sigint_handler(int sig) {
     running = 0;
 }
+
 
 int main(int argc, char *argv[]) {
 
@@ -27,6 +32,16 @@ int main(int argc, char *argv[]) {
 
     const char *document_folder = argv[1];
     int cache_size = atoi(argv[2]);
+
+    int metadata_fd = open("metadata.dat", O_RDWR | O_CREAT, 0666);
+    if (metadata_fd == -1) {
+        perror("open metadata.dat");
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialize cache
+    init_cache(cache_size);
+    load_metadata();
 
     printf("Servidor iniciado!\n");
     printf("Pasta de documentos: %s\n", document_folder);
@@ -40,7 +55,6 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, sigint_handler);
 
     int fd_server;
-    MensagemCliente pedido;
 
     while (running) {
         fd_server = open(FIFO_SERVER, O_RDONLY);
@@ -49,22 +63,16 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        while (read(fd_server, &pedido, sizeof(MensagemCliente)) > 0) {
-            printf("Recebido pedido: operação '%c'\n", pedido.operacao);
-
-            if (pedido.operacao == 'f') {
-                printf("Pedido de shutdown recebido. A terminar servidor.\n");
-                running = 0;
-                break;
-            }
-
-        }
+        running = handle_operation(fd_server);
 
         close(fd_server);
     }
 
     unlink(FIFO_SERVER);
-
     printf("Servidor terminado.\n");
+
+    free_cache();
+    close(metadata_fd);
+
     return 0;
 }

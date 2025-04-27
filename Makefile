@@ -12,8 +12,9 @@ RESULT_DIR = resultados
 # Source files
 SRC_FILES = \
 	$(SRC_DIR)/dclient.c \
-	$(SRC_DIR)/dserver.c
-
+	$(SRC_DIR)/dserver.c \
+	$(SRC_DIR)/handle_request.c \
+	$(SRC_DIR)/cache.c
 
 # Object files
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRC_FILES))
@@ -29,9 +30,9 @@ $(CLIENT_EXEC): $(BUILD_DIR)/dclient.o
 	@mkdir -p $(EXEC_DIR)
 	$(CC) $(BUILD_DIR)/dclient.o -o $(CLIENT_EXEC) $(LDFLAGS)
 
-$(SERVER_EXEC): $(BUILD_DIR)/dserver.o
+$(SERVER_EXEC): $(BUILD_DIR)/dserver.o $(BUILD_DIR)/handle_request.o $(BUILD_DIR)/cache.o
 	@mkdir -p $(EXEC_DIR)
-	$(CC) $(BUILD_DIR)/dserver.o -o $(SERVER_EXEC) $(LDFLAGS)
+	$(CC) $(BUILD_DIR)/dserver.o $(BUILD_DIR)/handle_request.o $(BUILD_DIR)/cache.o -o $(SERVER_EXEC) $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)

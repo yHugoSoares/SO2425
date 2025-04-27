@@ -1,6 +1,9 @@
 #ifndef DSERVER_H
 #define DSERVER_H
 
+#define FIFO_SERVER "/tmp/server_fifo"
+#define FIFO_CLIENT "/tmp/client_fifo"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
