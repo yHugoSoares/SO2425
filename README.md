@@ -2,8 +2,8 @@
 
 ## Authors
 - Hugo
-- Author 2
-- Author 3
+- Francisco Martins
+- Jorge Barbosa
 
 ## Project Overview
 This project is part of the Sistemas Operativos (Operating Systems) course. The goal of the project is to [].
@@ -11,7 +11,8 @@ This project is part of the Sistemas Operativos (Operating Systems) course. The 
 ## Usage
 To run the project, execute the following command:
 ```bash
-./project-executable
+./executables/dserver <args>
+./executables/dclient <args>
 ```
 
 ## License
