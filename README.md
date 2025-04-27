@@ -6,10 +6,27 @@
 - Jorge Barbosa
 
 ## Project Overview
-This project is part of the Sistemas Operativos (Operating Systems) course. The goal of the project is to [].
+This project implements a client-server document indexing and search system as part of the Operating Systems course. The system allows users to:
 
-## Usage
-To run the project, execute the following command:
+- Index text documents with metadata (title, authors, year, path)
+- Search documents by content and metadata
+- Manage document entries through a client-server architecture
+- Handle concurrent requests with caching optimizations
+
+Key features:
+- Named pipe (FIFO) communication between client and server
+- Metadata persistence to disk
+- LRU caching strategy for frequently accessed documents
+- Concurrent search operations
+- File-based document storage
+
+## Installation
+1. Clone the repository
+2. Ensure required directories exist:
+```bash
+mkdir -p src include obj bin tmp
+```
+3. Run it:
 ```bash
 ./executables/dserver <args>
 ./executables/dclient <args>
