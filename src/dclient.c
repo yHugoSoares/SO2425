@@ -1,5 +1,3 @@
-// src/dclient.c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,9 +82,16 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    // Fifo para cada cliente
+    pid_t pid = getpid();
+    char fifo_resposta[MAX_FIFO_NAME];
+    snprintf(fifo_resposta, MAX_FIFO_NAME, "/tmp/client_%d_fifo", pid);
+    mkfifo(fifo_resposta, 0666);
+
     int fd_server = open(FIFO_SERVER, O_WRONLY);
     if (fd_server == -1) {
         perror("open");
+        unlink(fifo_resposta);
         exit(EXIT_FAILURE);
     }
 
@@ -98,12 +103,32 @@ int main(int argc, char *argv[]) {
     if (write(fd_server, &pedido, sizeof(MensagemCliente)) == -1) {
         perror("write");
         close(fd_server);
+        unlink(fifo_resposta);
         exit(EXIT_FAILURE);
     }
 
     close(fd_server);
 
     printf("Pedido '%c' enviado ao servidor.\n", pedido.operacao);
+
+    int fd_resp = open(fifo_resposta, O_RDONLY);
+    if (fd_resp == -1) {
+        perror("Erro ao abrir FIFO de resposta");
+        unlink(fifo_resposta);
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[512];
+    int n = read(fd_resp, buffer, sizeof(buffer) - 1);
+    if (n > 0) {
+        buffer[n] = '\0';
+        printf("Resposta do servidor: %s\n", buffer);
+    } else {
+        printf("Nenhuma resposta recebida do servidor.\n");
+    }
+
+    close(fd_resp);
+    unlink(fifo_resposta);
 
     return 0;
 }
