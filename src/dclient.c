@@ -3,11 +3,14 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "common.h"
 
 #define FIFO_SERVER "/tmp/server_fifo"
 
 void prepararPedido(int argc, char *argv[], MensagemCliente *pedido) {
+
+    
     // adicionar 
     if (strcmp(argv[1], "-a") == 0) { 
         if (argc != 6) {
