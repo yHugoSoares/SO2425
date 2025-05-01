@@ -17,7 +17,7 @@ char *document_folder;
 // NOT FULLY CORRECT
 void save_metadata() {
     // Simple save without atomic guarantees
-    int fd = open("metadata.dat", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    int fd = open("metadata.txt", O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
     if (fd == -1) {
         perror("save_metadata");
         return;
@@ -27,7 +27,7 @@ void save_metadata() {
 }
 
 void load_metadata() {
-    int fd = open("metadata.dat", O_RDONLY);
+    int fd = open("metadata.txt", O_RDONLY);
     if (fd == -1) {
         metadata.count = 0;
         metadata.last_id = 0;
@@ -50,7 +50,7 @@ int handle_operation(int fd_server) {
                 Document doc;
                 char title[200], authors[200], year[5], path[64];
                 
-                if(sscanf(pedido.dados, "%[^;];%[^;];%[^;];%s", title, authors, year, path) != 4) {
+                if (sscanf(pedido.dados, "%199s %199s %4s %63s", title, authors, year, path) != 4) {
                     strcpy(response, "Invalid format");
                     break;
                 }
@@ -118,11 +118,12 @@ int handle_operation(int fd_server) {
             case 'f':
                 return 0; // Terminate server
         }
-
+        
         if((client_fd = open(pedido.resposta_fifo, O_WRONLY)) != -1) {
             write(client_fd, response, strlen(response)+1);
             close(client_fd);
         }
+        printf("Done processing: %c\n", pedido.operacao);
     }
     return 1;
 }
