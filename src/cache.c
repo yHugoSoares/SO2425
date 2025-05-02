@@ -1,7 +1,43 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "cache.h"
 
 LRUCache cache;
+
+// Save the cache to a file
+void save_cache(const char *filename) {
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        perror("Failed to open cache file for writing");
+        return;
+    }
+
+    CacheNode *current = cache.head;
+    while (current) {
+        fwrite(&current->doc, sizeof(Document), 1, file);
+        current = current->next;
+    }
+
+    fclose(file);
+}
+
+// Load the cache from a file
+void load_cache(const char *filename) {
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        perror("Failed to open cache file for reading");
+        return;
+    }
+
+    init_cache(cache.capacity); // Ensure the cache is initialized
+
+    Document doc;
+    while (fread(&doc, sizeof(Document), 1, file) == 1) {
+        add_to_cache(doc);
+    }
+
+    fclose(file);
+}
 
 void init_cache(int capacity) {
     cache.head = NULL;

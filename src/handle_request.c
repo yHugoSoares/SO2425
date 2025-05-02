@@ -15,7 +15,7 @@ char *document_folder;
 // NOT FULLY CORRECT
 void save_metadata() {
     // Simple save without atomic guarantees
-    int fd = open("metadata.txt", O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
+    int fd = open("metadata.dat", O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
     if (fd == -1) {
         perror("save_metadata");
         return;
@@ -25,7 +25,7 @@ void save_metadata() {
 }
 
 void load_metadata() {
-    int fd = open("metadata.txt", O_RDONLY);
+    int fd = open("metadata.dat", O_RDONLY);
     if (fd == -1) {
         metadata.count = 0;
         metadata.last_id = 0;

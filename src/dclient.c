@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include "common.h"
 
-#define FIFO_SERVER "/tmp/server_fifo"
 
 void prepararPedido(int argc, char *argv[], MensagemCliente *pedido) {
     // adicionar 

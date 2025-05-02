@@ -58,5 +58,6 @@ dkms.conf
 DataSet/
 Gdataset/
 
-# Ignore .dat
+# Ignore .dat .txt
+*.txt
 *.dat

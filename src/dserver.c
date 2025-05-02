@@ -9,8 +9,9 @@
 #include "common.h"
 #include "handle_request.h"
 #include "cache.h"
+#include "common.h"
 
-#define FIFO_SERVER "/tmp/server_fifo"
+
 
 volatile sig_atomic_t running = 1;
 
@@ -31,9 +32,9 @@ int main(int argc, char *argv[]) {
     const char *document_folder = argv[1];
     int cache_size = atoi(argv[2]);
 
-    int metadata_fd = open("metadata.txt", O_RDWR | O_CREAT, 0666);
+    int metadata_fd = open("metadata.dat", O_RDWR | O_CREAT, 0666);
     if (metadata_fd == -1) {
-        perror("open metadata.txt");
+        perror("open metadata.dat");
         exit(EXIT_FAILURE);
     }
 
