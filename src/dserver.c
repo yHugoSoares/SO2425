@@ -4,14 +4,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <signal.h>
 #include "common.h"
 #include "handle_request.h"
 #include "cache.h"
-#include "common.h"
 
-
+#define FIFO_SERVER "/tmp/server_fifo"
 
 volatile sig_atomic_t running = 1;
 
@@ -23,55 +20,46 @@ void sigint_handler(int sig) {
 
 int main(int argc, char *argv[]) {
 
-    // mensagem de erro caso não execute bem 
-    if (argc != 3) {
-        fprintf(stderr, "Uso: %s <document_folder> <cache_size>\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
+    // Criar o FIFO de pedidos 
+    mkfifo(REQUEST_PIPE, 0666);
 
-    const char *document_folder = argv[1];
-    int cache_size = atoi(argv[2]);
+    printf("Servidor iniciado. À escuta de pedidos...\n");
 
-    int metadata_fd = open(METADATA_FILE, O_RDWR | O_CREAT, 0666);
+    int metadata_fd = open("metadata.txt", O_RDWR | O_CREAT, 0666);
     if (metadata_fd == -1) {
-        perror("open metadata.dat");
+        perror("open metadata.txt");
         exit(EXIT_FAILURE);
     }
 
-    // Initialize cache
-    init_cache(cache_size);
-    load_metadata();
-
-    printf("Servidor iniciado!\n");
-    printf("Pasta de documentos: %s\n", document_folder);
-    printf("Tamanho da cache: %d\n", cache_size);
-
-    // inicia FIFO
-    if (mkfifo(FIFO_SERVER, 0666) == -1) {
-        perror("mkfifo");
-    }
-
-    signal(SIGINT, sigint_handler);
-
-    int fd_server;
-
-    while (running) {
-        fd_server = open(FIFO_SERVER, O_RDONLY);
-        if (fd_server == -1) {
-            perror("open");
-            break;
+    MensagemCliente pedido;
+    while (1) {
+        ssize_t bytes = read(fd_request, &pedido, sizeof(MensagemCliente));
+        if (bytes <= 0) {
+            continue;
         }
 
-        running = handle_operation(fd_server);
+        printf("Recebido pedido do cliente %d: operação '%c'\n", pedido.pid, pedido.operacao);
 
-        close(fd_server);
+        // Criar resposta ao pedido
+        char resposta[512];
+        snprintf(resposta, sizeof(resposta), "Pedido recebido: operação '%c', dados: %s", pedido.operacao, pedido.dados);
+
+        // Criar caminho do FIFO de resposta
+        char fifo_resposta[64];
+        snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
+
+        // Enviar resposta ao cliente
+        int fd_resposta = open(fifo_resposta, O_WRONLY);
+        if (fd_resposta != -1) {
+            write(fd_resposta, resposta, strlen(resposta) + 1);
+            close(fd_resposta);
+        } else {
+            perror("Erro ao abrir pipe de resposta");
+        }
     }
 
-    unlink(FIFO_SERVER);
-    printf("Servidor terminado.\n");
-
-    free_cache();
-    close(metadata_fd);
+    close(fd_request);
+    unlink(REQUEST_PIPE);
 
     return 0;
 }

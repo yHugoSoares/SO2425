@@ -1,9 +1,10 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define MAX_DADOS 512
+#define MAX_DADOS 450
 #define MAX_FIFO_NAME 256
 #define MAX_DOCS 1000
+#define REQUEST_PIPE "/tmp/request_pipe"
 
 #define FIFO_SERVER "/tmp/server_fifo"
 #define FIFO_CLIENT "/tmp/client_fifo"
@@ -25,6 +26,7 @@ typedef struct {
 } Metadata;
 
 typedef struct {
+    pid_t pid;
     char operacao;
     char dados[MAX_DADOS];
     char resposta_fifo[MAX_FIFO_NAME];
