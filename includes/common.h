@@ -1,10 +1,19 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #define MAX_DADOS 450
 #define MAX_FIFO_NAME 256
 #define MAX_DOCS 1000
 #define REQUEST_PIPE "/tmp/request_pipe"
+#define MAX_OP 3
 
 #define FIFO_SERVER "/tmp/server_fifo"
 #define FIFO_CLIENT "/tmp/client_fifo"
@@ -27,7 +36,7 @@ typedef struct {
 
 typedef struct {
     pid_t pid;
-    char operacao;
+    char operacao[MAX_OP];
     char dados[MAX_DADOS];
     char resposta_fifo[MAX_FIFO_NAME];
 } MensagemCliente;

@@ -22,8 +22,10 @@ int main(int argc, char *argv[]) {
     // Preparar mensagem
     MensagemCliente pedido;
     pedido.pid = pid;
-    pedido.operacao = argv[1][0];
 
+    strncpy(pedido.operacao, argv[1], MAX_OP - 1);
+    pedido.operacao[MAX_OP - 1] = '\0'; 
+    
     if (argc > 2) {
         snprintf(pedido.dados, MAX_DADOS, "%s", argv[2]);  // simplificado para um argumento
     } else {

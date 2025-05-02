@@ -25,13 +25,11 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        printf("Recebido pedido do cliente %d: operação '%c'\n", pedido.pid, pedido.operacao);
+        printf("Recebido pedido do cliente %d: operação '%s'\n", pedido.pid, pedido.operacao);
 
         // Criar resposta (aqui só respondemos algo simples, para testar)
         char resposta[512];
-        snprintf(resposta, sizeof(resposta),
-                 "Pedido recebido: operação '%c', dados: %s",
-                 pedido.operacao, pedido.dados);
+        snprintf(resposta, sizeof(resposta), "Pedido recebido: operação '%s', dados: %s", pedido.operacao, pedido.dados);
 
         // Criar caminho do FIFO de resposta
         char fifo_resposta[64];
