@@ -14,13 +14,22 @@ char *document_folder;
 
 // NOT FULLY CORRECT
 void save_metadata() {
+<<<<<<< HEAD
     // Simple save without atomic guarantees
     int fd = open("metadata.dat", O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
+=======
+    int fd = open("metadata.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+>>>>>>> 5678fa7536af3ebdb919973b337a99290c982d77
     if (fd == -1) {
         perror("save_metadata");
         return;
     }
-    write(fd, &metadata, sizeof(Metadata));
+
+    ssize_t written = write(fd, &metadata, sizeof(Metadata));
+    if (written != sizeof(Metadata)) {
+        perror("Error writing metadata");
+    }
+
     close(fd);
 }
 
