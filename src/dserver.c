@@ -5,30 +5,17 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include "common.h"
-#include "handle_request.h"
-#include "cache.h"
-
-#define FIFO_SERVER "/tmp/server_fifo"
-
-volatile sig_atomic_t running = 1;
-
-// funcao que limpa o server de maneira segura
-void sigint_handler(int sig) {
-    running = 0;
-}
-
 
 int main(int argc, char *argv[]) {
-
-    // Criar o FIFO de pedidos 
+    // Criar o FIFO de pedidos (só precisa de ser feito uma vez)
     mkfifo(REQUEST_PIPE, 0666);
 
     printf("Servidor iniciado. À escuta de pedidos...\n");
 
-    int metadata_fd = open("metadata.txt", O_RDWR | O_CREAT, 0666);
-    if (metadata_fd == -1) {
-        perror("open metadata.txt");
-        exit(EXIT_FAILURE);
+    int fd_request = open(REQUEST_PIPE, O_RDONLY);
+    if (fd_request == -1) {
+        perror("Erro ao abrir pipe de pedido");
+        return 1;
     }
 
     MensagemCliente pedido;
@@ -40,9 +27,11 @@ int main(int argc, char *argv[]) {
 
         printf("Recebido pedido do cliente %d: operação '%c'\n", pedido.pid, pedido.operacao);
 
-        // Criar resposta ao pedido
+        // Criar resposta (aqui só respondemos algo simples, para testar)
         char resposta[512];
-        snprintf(resposta, sizeof(resposta), "Pedido recebido: operação '%c', dados: %s", pedido.operacao, pedido.dados);
+        snprintf(resposta, sizeof(resposta),
+                 "Pedido recebido: operação '%c', dados: %s",
+                 pedido.operacao, pedido.dados);
 
         // Criar caminho do FIFO de resposta
         char fifo_resposta[64];
