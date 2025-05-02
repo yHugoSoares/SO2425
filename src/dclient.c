@@ -112,24 +112,6 @@ int main(int argc, char *argv[]) {
     close(fd_server);
 
     printf("Pedido '%c' enviado ao servidor.\n", pedido.operacao);
-
-    int fd_resp = open(fifo_resposta, O_RDONLY);
-    if (fd_resp == -1) {
-        perror("Erro ao abrir FIFO de resposta");
-        unlink(fifo_resposta);
-        exit(EXIT_FAILURE);
-    }
-
-    char buffer[512];
-    int n = read(fd_resp, buffer, sizeof(buffer) - 1);
-    if (n > 0) {
-        buffer[n] = '\0';
-        printf("Resposta do servidor: %s\n", buffer);
-    } else {
-        printf("Nenhuma resposta recebida do servidor.\n");
-    }
-
-    close(fd_resp);
     unlink(fifo_resposta);
 
     return 0;

@@ -14,19 +14,14 @@ char *document_folder;
 
 // NOT FULLY CORRECT
 void save_metadata() {
-<<<<<<< HEAD
-    // Simple save without atomic guarantees
-    int fd = open("metadata.dat", O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
-=======
-    int fd = open("metadata.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
->>>>>>> 5678fa7536af3ebdb919973b337a99290c982d77
+    int fd = open(METADATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1) {
         perror("save_metadata");
         return;
     }
 
-    ssize_t written = write(fd, &metadata, sizeof(Metadata));
-    if (written != sizeof(Metadata)) {
+    ssize_t written = write(fd, &metadata, sizeof(metadata));
+    if (written != sizeof(metadata)) {
         perror("Error writing metadata");
     }
 
@@ -34,7 +29,7 @@ void save_metadata() {
 }
 
 void load_metadata() {
-    int fd = open("metadata.dat", O_RDONLY);
+    int fd = open(METADATA_FILE, O_RDONLY);
     if (fd == -1) {
         metadata.count = 0;
         metadata.last_id = 0;
@@ -54,14 +49,13 @@ int handle_operation(int fd_server) {
 
         switch(pedido.operacao) {
             case 'a': { // ADD INDEXATION
+                printf("Adding document...\n");
                 Document doc;
                 char title[200], authors[200], year[5], path[64];
-                
-                if (sscanf(pedido.dados, "%199s %199s %4s %63s", title, authors, year, path) != 4) {
-                    strcpy(response, "Invalid format");
-                    break;
-                }
 
+                sscanf(pedido.dados, "%[^;];%[^;];%[^;];%[^;]", title, authors, year, path);
+                printf("Title: %s\nAuthors: %s\nYear: %s\nPath: %s\n", title, authors, year, path);
+                
                 // Basic ID generation
                 doc.id = ++metadata.last_id;
                 strncpy(doc.title, title, sizeof(doc.title));
@@ -69,8 +63,11 @@ int handle_operation(int fd_server) {
                 strncpy(doc.year, year, sizeof(doc.year));
                 strncpy(doc.path, path, sizeof(doc.path));
 
+
                 metadata.docs[metadata.count++] = doc;
+                printf("Document added with ID: %d\n", doc.id);
                 save_metadata();
+                printf("Metadata saved.\n");
                 snprintf(response, sizeof(response), "Added ID %d", doc.id);
                 break;
             }

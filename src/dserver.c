@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     const char *document_folder = argv[1];
     int cache_size = atoi(argv[2]);
 
-    int metadata_fd = open("metadata.dat", O_RDWR | O_CREAT, 0666);
+    int metadata_fd = open(METADATA_FILE, O_RDWR | O_CREAT, 0666);
     if (metadata_fd == -1) {
         perror("open metadata.dat");
         exit(EXIT_FAILURE);
