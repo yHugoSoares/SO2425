@@ -18,6 +18,6 @@ extern char *document_folder;
 // Function declarations
 void save_metadata();
 void load_metadata();
-int handle_operation(int fd_server);
+int handle_request(MensagemCliente pedido, const char *document_folder);
 
 #endif /* HANDLE_REQUEST_H */

@@ -41,4 +41,6 @@ typedef struct {
     char resposta_fifo[MAX_FIFO_NAME];
 } MensagemCliente;
 
+int conta_linhas_com_palavra(const char *filepath, const char *keyword);
+
 #endif
