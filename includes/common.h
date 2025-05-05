@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#define MAX_FIFO_NAME 256
+#define MAX_FIFO_NAME 512
 #define MAX_DOCS 1000
 #define MAX_TITLE_SIZE 190
 #define MAX_AUTHOR_SIZE 190

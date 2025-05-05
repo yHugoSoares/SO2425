@@ -28,11 +28,18 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Uso: %s -a \"title\" \"authors\" \"year\" \"path\"\n", argv[0]);
                 return 1;
             }
-            strnpy(pedido.title, argv[2]);
-            strnpy(pedido.authors, argv[3]);
-            strnpy(pedido.year, argv[4]);
-            strnpy(pedido.path, argv[5]);
-            break;
+            strncpy(pedido.title, argv[2], MAX_TITLE_SIZE - 1);
+            pedido.title[MAX_TITLE_SIZE - 1] = '\0';
+            
+            strncpy(pedido.authors, argv[3], MAX_AUTHOR_SIZE - 1);
+            pedido.authors[MAX_AUTHOR_SIZE - 1] = '\0';
+            
+            strncpy(pedido.year, argv[4], MAX_YEAR_SIZE - 1);
+            pedido.year[MAX_YEAR_SIZE - 1] = '\0';
+            
+            strncpy(pedido.path, argv[5], MAX_PATH_SIZE - 1);
+            pedido.path[MAX_PATH_SIZE - 1] = '\0';
+                        break;
 
         case 'c': // Contar linhas
             if (argc != 3) {

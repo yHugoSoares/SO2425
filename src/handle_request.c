@@ -41,13 +41,11 @@ void load_metadata() {
 
 int handle_request(MensagemCliente pedido, const char *document_folder) {
     char resposta[1024] = "";
-    // int found = 0;
 
     switch (pedido.operacao) {
         case 'f': {  // SHUTDOWN
             snprintf(resposta, sizeof(resposta), "Servidor a terminar...");
 
-            // Construir FIFO de resposta
             char fifo_resposta[MAX_FIFO_NAME];
             snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
 
@@ -58,7 +56,7 @@ int handle_request(MensagemCliente pedido, const char *document_folder) {
             } else {
                 perror("Erro ao abrir FIFO de resposta");
             }
-            return 0;  // Terminar o servidor
+            return 0;  // Termina o servidor
         }
 
         case 'a': {  // ADD DOCUMENT
@@ -71,16 +69,16 @@ int handle_request(MensagemCliente pedido, const char *document_folder) {
                 strncpy(doc.authors, pedido.authors, MAX_AUTHOR_SIZE - 1);
                 strncpy(doc.year, pedido.year, MAX_YEAR_SIZE - 1);
                 strncpy(doc.path, pedido.path, MAX_PATH_SIZE - 1);
-    
+
                 metadata.docs[metadata.count++] = doc;
                 save_metadata();
-    
-                snprintf(resposta, sizeof(resposta), "Documento %d indexado com sucesso.", doc.id);
+
+                snprintf(resposta, sizeof(resposta), "Document %d indexed", doc.id);
             }
-    
+
             char fifo_resposta[MAX_FIFO_NAME];
             snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
-    
+
             int fd_resp = open(fifo_resposta, O_WRONLY);
             if (fd_resp != -1) {
                 write(fd_resp, resposta, strlen(resposta) + 1);
@@ -88,131 +86,99 @@ int handle_request(MensagemCliente pedido, const char *document_folder) {
             } else {
                 perror("Erro ao abrir FIFO de resposta");
             }
-    
+
             return 1;
         }
 
-        // case 'd': {  // DELETE DOCUMENT
-        //     int id;
-        //     if (sscanf(pedido.dados, "%d", &id) != 1) {
-        //         snprintf(resposta, sizeof(resposta), "Erro: ID inválido.");
-        //     } else {
-        //         for (int i = 0; i < metadata.count; i++) {
-        //             if (metadata.docs[i].id == id) {
-        //                 metadata.docs[i] = metadata.docs[--metadata.count];
-        //                 save_metadata();
-        //                 snprintf(resposta, sizeof(resposta), "Index entry %d deleted", id);
-        //                 found = 1;
-        //                 break;
-        //             }
-        //         }
-        //         if (!found) {
-        //             snprintf(resposta, sizeof(resposta), "ID %d não encontrado.", id);
-        //         }
-        //     }
-        //     break;
-        // }
+        case 'd': {  // REMOVER DOCUMENTO
+            int found = 0;
+        
+            for (int i = 0; i < metadata.count; i++) {
+                if (metadata.docs[i].id == pedido.key) {
+                    // Shift à esquerda para remover
+                    for (int j = i; j < metadata.count - 1; j++) {
+                        metadata.docs[j] = metadata.docs[j + 1];
+                    }
+                    metadata.count--;
+                    save_metadata();  // Atualizar no ficheiro
+                    found = 1;
+                    break;
+                }
+            }
+        
+            if (found) {
+                snprintf(resposta, sizeof(resposta), "Index entry %d delected.", pedido.key);
+            } else {
+                snprintf(resposta, sizeof(resposta), "Index %d not found.", pedido.key);
+            }
+        
+            char fifo_resposta[MAX_FIFO_NAME];
+            snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
+        
+            int fd_resp = open(fifo_resposta, O_WRONLY);
+            if (fd_resp != -1) {
+                write(fd_resp, resposta, strlen(resposta) + 1);
+                close(fd_resp);
+            } else {
+                perror("Erro ao abrir FIFO de resposta");
+            }
+        
+            return 1;
+        }
+        
 
-        // default: {  // QUERIES HANDLED IN CHILD PROCESS
-        //     pid_t pid = fork();
-        //     if (pid == 0) {  // Child process
-        //         switch (pedido.operacao[1]) {
-        //             case 'c': {  // CONSULT DOCUMENT
-        //                 int id;
-        //                 if (sscanf(pedido.dados, "%d", &id) == 1) {
-        //                     for (int i = 0; i < metadata.count; i++) {
-        //                         if (metadata.docs[i].id == id) {
-        //                             snprintf(resposta, sizeof(resposta),
-        //                                 "Title: %s\nAuthors: %s\nYear: %s\nPath: %s",
-        //                                 metadata.docs[i].title, metadata.docs[i].authors,
-        //                                 metadata.docs[i].year, metadata.docs[i].path);
-        //                             found = 1;
-        //                             break;
-        //                         }
-        //                     }
-        //                     if (!found) {
-        //                         snprintf(resposta, sizeof(resposta), "Documento com ID %d não encontrado.", id);
-        //                     }
-        //                 }
-        //                 break;
-        //             }
+        default: {
+            pid_t pid = fork();
+            if (pid == 0) {  // Processo filho
+                char resposta[512] = "";
 
-        //             case 'l': {  // COUNT LINES
-        //                 int id;
-        //                 char palavra[64];
-        //                 if (sscanf(pedido.dados, "%d %s", &id, palavra) == 2) {
-        //                     for (int i = 0; i < metadata.count; i++) {
-        //                         if (metadata.docs[i].id == id) {
-        //                             char caminho[256];
-        //                             snprintf(caminho, sizeof(caminho), "%s/%s", 
-        //                                    document_folder, metadata.docs[i].path);
-        //                             int count = conta_linhas_com_palavra(caminho, palavra);
-        //                             snprintf(resposta, sizeof(resposta), "%d", count);
-        //                             found = 1;
-        //                             break;
-        //                         }
-        //                     }
-        //                     if (!found) {
-        //                         snprintf(resposta, sizeof(resposta), "ID %d não encontrado.", id);
-        //                     }
-        //                 }
-        //                 break;
-        //             }
+                switch (pedido.operacao) {
+                    case 'c': {  // CONSULTA
+                        int found = 0;
+                        for (int i = 0; i < metadata.count; i++) {
+                            if (metadata.docs[i].id == pedido.key) {
+                                snprintf(resposta, sizeof(resposta),
+                                         "Title: %s\nAuthors: %s\nYear: %s\nPath: %s",
+                                         metadata.docs[i].title,
+                                         metadata.docs[i].authors,
+                                         metadata.docs[i].year,
+                                         metadata.docs[i].path);
+                                found = 1;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
+                        }
+                        break;
+                    }
 
-        //             case 's': {  // SEARCH
-        //                 char palavra[64];
-        //                 int max_processos = 1;
-        //                 sscanf(pedido.dados, "%s %d", palavra, &max_processos);
+                    default:
+                        snprintf(resposta, sizeof(resposta), "ERROR");
+                        break;
+                }
 
-        //                 int pipe_fds[2];
-        //                 pipe(pipe_fds);
+                char fifo_resposta[MAX_FIFO_NAME];
+                snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
 
-        //                 int filhos = 0;
-        //                 for (int i = 0; i < metadata.count; i++) {
-        //                     if (filhos == max_processos) wait(NULL);
+                int fd_resp = open(fifo_resposta, O_WRONLY);
+                if (fd_resp != -1) {
+                    write(fd_resp, resposta, strlen(resposta) + 1);
+                    close(fd_resp);
+                } else {
+                    perror("Erro ao abrir FIFO de resposta");
+                }
 
-        //                     if (fork() == 0) {
-        //                         char caminho[256];
-        //                         snprintf(caminho, sizeof(caminho), "%s/%s", 
-        //                                document_folder, metadata.docs[i].path);
-        //                         int count = conta_linhas_com_palavra(caminho, palavra);
-        //                         if (count > 0) {
-        //                             dprintf(pipe_fds[1], "%d ", metadata.docs[i].id);
-        //                         }
-        //                         exit(0);
-        //                     }
-        //                     filhos++;
-        //                 }
-
-        //                 while (wait(NULL) > 0);
-        //                 close(pipe_fds[1]);
-        //                 read(pipe_fds[0], resposta, sizeof(resposta));
-        //                 close(pipe_fds[0]);
-        //                 break;
-        //             }
-
-        //             default: {
-        //                 snprintf(resposta, sizeof(resposta), "Operação inválida: %s", pedido.operacao);
-        //                 break;
-        //             }
-        //         }
-
-        //         // Send response
-        //         int fd_resp = open(pedido.resposta_fifo, O_WRONLY);
-        //         write(fd_resp, resposta, strlen(resposta) + 1);
-        //         close(fd_resp);
-        //         exit(0);
-        //     } 
-        //     else {  // Parent process
-        //         waitpid(pid, NULL, 0);
-        //         return 1;
-        //     }
-        // }
+                exit(0);
+            } else if (pid > 0) {
+                waitpid(pid, NULL, 0);
+                return 1;
+            } else {
+                perror("Erro no fork");
+                return 1;
+            }
+        }
     }
 
-    // Send response for parent-processed operations
-    // int fd_resp = open(pedido.resposta_fifo, O_WRONLY);
-    // write(fd_resp, resposta, strlen(resposta) + 1);
-    // close(fd_resp);
     return 1;
 }
