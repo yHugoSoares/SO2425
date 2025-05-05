@@ -20,15 +20,18 @@ int main(int argc, char *argv[]) {
 
     // Preencher os campos dependendo da operação
     switch (pedido.operacao) {
+        case 'f': // Finalizar
+            pedido.operacao = 'f'; // Finalizar
+            break;
         case 'a': // Adicionar documento
             if (argc != 6) {
                 fprintf(stderr, "Uso: %s -a \"title\" \"authors\" \"year\" \"path\"\n", argv[0]);
                 return 1;
             }
-            strncpy(pedido.title, argv[2], MAX_TITLE_SIZE - 1);
-            strncpy(pedido.authors, argv[3], MAX_AUTHOR_SIZE - 1);
-            strncpy(pedido.year, argv[4], MAX_YEAR_SIZE - 1);
-            strncpy(pedido.path, argv[5], MAX_PATH_SIZE - 1);
+            strnpy(pedido.title, argv[2]);
+            strnpy(pedido.authors, argv[3]);
+            strnpy(pedido.year, argv[4]);
+            strnpy(pedido.path, argv[5]);
             break;
 
         case 'c': // Contar linhas
