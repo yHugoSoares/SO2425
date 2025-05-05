@@ -1,7 +1,7 @@
 # Sistemas Operativos Project
 
 ## Authors
-- Hugo
+- Hugo Soares
 - Francisco Martins
 - Jorge Barbosa
 
