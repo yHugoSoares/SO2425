@@ -9,14 +9,18 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#define MAX_DADOS 450
 #define MAX_FIFO_NAME 256
 #define MAX_DOCS 1000
-#define REQUEST_PIPE "/tmp/request_pipe"
-#define MAX_OP 3
+#define MAX_TITLE_SIZE 190
+#define MAX_AUTHOR_SIZE 190
+#define MAX_YEAR_SIZE 5
+#define MAX_PATH_SIZE 64
+#define MAX_KEYWORD_SIZE 32
 
-#define FIFO_SERVER "/tmp/server_fifo"
-#define FIFO_CLIENT "/tmp/client_fifo"
+
+#define REQUEST_PIPE "tmp/request_pipe"
+#define FIFO_SERVER "tmp/server_fifo"
+#define FIFO_CLIENT "tmp/client_fifo"
 #define CACHE_FILE "cache.dat"
 #define METADATA_FILE "metadata.dat"
 
@@ -36,9 +40,15 @@ typedef struct {
 
 typedef struct {
     pid_t pid;
-    char operacao[MAX_OP];
-    char dados[MAX_DADOS];
-    char resposta_fifo[MAX_FIFO_NAME];
+    char operacao;
+    char title[MAX_TITLE_SIZE];
+    char authors[MAX_AUTHOR_SIZE];
+    char year[MAX_YEAR_SIZE];
+    char path[MAX_PATH_SIZE];
+    int key;
+    int lines;
+    char keyword[MAX_KEYWORD_SIZE];
+    int n_procs;
 } MensagemCliente;
 
 int conta_linhas_com_palavra(const char *filepath, const char *keyword);

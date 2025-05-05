@@ -7,11 +7,8 @@
 #include "handle_request.h"
 #include "common.h"
 
-
 int main(int argc, char *argv[]) {
-    // Criar o FIFO de pedidos (só precisa de ser feito uma vez)
     mkfifo(REQUEST_PIPE, 0666);
-
     printf("Servidor iniciado. À escuta de pedidos...\n");
 
     int fd_request = open(REQUEST_PIPE, O_RDONLY, O_WRONLY);
@@ -19,34 +16,20 @@ int main(int argc, char *argv[]) {
         perror("Erro ao abrir pipe de pedido");
         return 1;
     }
+
     MensagemCliente pedido;
-    
     int running = 1;
+
     while (running) {
         ssize_t bytes = read(fd_request, &pedido, sizeof(MensagemCliente));
         if (bytes <= 0) {
             continue;
         }
 
-        printf("Recebido pedido do cliente %d: operação '%s'\n", pedido.pid, pedido.operacao);
+        printf("Recebido pedido do cliente %d: operação '%c'\n", pedido.pid, pedido.operacao);
 
-        // Criar resposta (aqui só respondemos algo simples, para testar)
-        char resposta[512];
-        snprintf(resposta, sizeof(resposta), "Pedido recebido: operação '%s', dados: %s", pedido.operacao, pedido.dados);
-
-        if (!handle_request(pedido, METADATA_FILE)) running = 0;
-        
-        // Criar caminho do FIFO de resposta
-        char fifo_resposta[64];
-        snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
-
-        // Enviar resposta ao cliente
-        int fd_resposta = open(fifo_resposta, O_WRONLY);
-        if (fd_resposta != -1) {
-            write(fd_resposta, resposta, strlen(resposta) + 1);
-            close(fd_resposta);
-        } else {
-            perror("Erro ao abrir pipe de resposta");
+        if (!handle_request(pedido, METADATA_FILE)) {
+            running = 0;
         }
     }
 
