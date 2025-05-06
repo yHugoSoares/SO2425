@@ -40,3 +40,8 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+
+// receber ver o que esta ver a operacao fazer e enviar para o cliente add remove e consulte tudo feito pelo pai 
+// s e l depois de saber que sao essas operacoes crio um filho que fica responsavel para usar outros filhos 
+// para fazer esses pesquisas e enviar resposta 
