@@ -21,7 +21,6 @@
 #define REQUEST_PIPE "tmp/request_pipe"
 #define FIFO_SERVER "tmp/server_fifo"
 #define FIFO_CLIENT "tmp/client_fifo"
-#define CACHE_FILE "cache.dat"
 #define METADATA_FILE "metadata.dat"
 
 typedef struct {
