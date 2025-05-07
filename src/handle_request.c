@@ -12,7 +12,7 @@
 Metadata metadata;
 
 
-// // NOT FULLY CORRECT
+// NOT FULLY CORRECT
 void save_metadata() {
     int fd = open(METADATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1) {
@@ -170,10 +170,10 @@ int handle_request(MensagemCliente pedido, const char *document_folder) {
             return handle_consulta(pedido);
         case 'd':
             return handle_remove(pedido);
-        case 'l':
-            return handle_lines_number(pedido, document_folder); // por fazer 
-        case 's':
-            return handle_search(pedido, document_folder); // por fazer
+        // case 'l':
+        //     return handle_lines_number(pedido, document_folder); // por fazer 
+        // case 's':
+        //     return handle_search(pedido, document_folder); // por fazer
         default:
             fprintf(stderr, "Operação desconhecida.");
             return 1;

@@ -1,113 +1,190 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "cache.h"
+#include <glib.h>
+#include <string.h>
+#include <index.h>
+#include <time.h>
 
-LRUCache cache;
+typedef struct CachePage {
+    int dirty;
+    int key;
+    IndexEntry *entry;
+} CachePage;
 
-// Save the cache to a file
-void save_cache(const char *filename) {
-    FILE *file = fopen(filename, "wb");
-    if (!file) {
-        perror("Failed to open cache file for writing");
-        return;
+typedef struct {
+    GHashTable *hash_table;  // Maps keys to CachePage*
+    CachePage **pages;       // Array of cache pages
+    int size;                // Total cache capacity
+    int count;               // Current number of entries
+    GRand *rng;              // Random number generator
+} Cache;
+
+// Global cache instance
+Cache *global_cache = NULL;
+
+// Add this forward declaration at the top of the file
+void cache_page_destroy(CachePage *page);
+
+// Initialize the cache
+int cache_init(int cache_size) {
+    if (cache_size <= 0) {
+        fprintf(stderr, "Cache size must be greater than 0\n");
+        return -1;
     }
 
-    CacheNode *current = cache.head;
-    while (current) {
-        fwrite(&current->doc, sizeof(Document), 1, file);
-        current = current->next;
+    if (global_cache != NULL) {
+        fprintf(stderr, "Cache already initialized\n");
+        return -1;
     }
 
-    fclose(file);
+    global_cache = malloc(sizeof(Cache));
+    if (!global_cache) {
+        perror("Failed to allocate cache");
+        return -1;
+    }
+
+    global_cache->pages = calloc(cache_size, sizeof(CachePage*));
+    if (!global_cache->pages) {
+        perror("Failed to allocate cache pages");
+        free(global_cache);
+        return -1;
+    }
+
+    global_cache->hash_table = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, 
+        (GDestroyNotify)cache_page_destroy);
+        
+    global_cache->size = cache_size;
+    global_cache->count = 0;
+    global_cache->rng = g_rand_new_with_seed(time(NULL));
+
+    return 0;
 }
 
-// Load the cache from a file
-void load_cache(const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) {
-        perror("Failed to open cache file for reading");
-        return;
-    }
-
-    init_cache(cache.capacity); // Ensure the cache is initialized
-
-    Document doc;
-    while (fread(&doc, sizeof(Document), 1, file) == 1) {
-        add_to_cache(doc);
-    }
-
-    fclose(file);
-}
-
-void init_cache(int capacity) {
-    cache.head = NULL;
-    cache.tail = NULL;
-    cache.size = 0;
-    cache.capacity = capacity;
-}
-
-void move_to_head(CacheNode *node) {
-    if (node == cache.head) return;
+// Destroy a cache page
+void cache_page_destroy(CachePage *page) {
+    if (!page) return;
     
-    // Remove from current position
-    if (node->prev) node->prev->next = node->next;
-    if (node->next) node->next->prev = node->prev;
-    if (node == cache.tail) cache.tail = node->prev;
+    if (page->dirty) {
+        index_write_dirty_entry(page->entry, page->key);
+    }
     
-    // Add to head
-    node->prev = NULL;
-    node->next = cache.head;
-    if (cache.head) cache.head->prev = node;
-    cache.head = node;
-    if (!cache.tail) cache.tail = node;
+    if (page->entry) {
+        destroy_index_entry(page->entry);
+    }
+    
+    free(page);
 }
 
-Document* get_from_cache(int doc_id) {
-    CacheNode *node = cache.head;
-    while (node) {
-        if (node->doc.id == doc_id) {
-            move_to_head(node);
-            return &node->doc;
-        }
-        node = node->next;
-    }
-    return NULL;
+// Get a random page index to evict
+int cache_get_eviction_index() {
+    return g_rand_int_range(global_cache->rng, 0, global_cache->count);
 }
 
-void add_to_cache(Document doc) {
-    // Check if already in cache
-    if (get_from_cache(doc.id)) return;
-    
-    // Create new node
-    CacheNode *new_node = malloc(sizeof(CacheNode));
-    new_node->doc = doc;
-    new_node->prev = NULL;
-    new_node->next = cache.head;
-    
-    // Update links
-    if (cache.head) cache.head->prev = new_node;
-    cache.head = new_node;
-    if (!cache.tail) cache.tail = new_node;
-    
-    // Check capacity
-    if (cache.size == cache.capacity) {
-        CacheNode *to_remove = cache.tail;
-        cache.tail = to_remove->prev;
-        if (cache.tail) cache.tail->next = NULL;
-        free(to_remove);
-    } else {
-        cache.size++;
+// Add entry to cache
+int cache_add_entry(int key, IndexEntry *entry, int dirty) {
+    if (!global_cache || global_cache->count >= global_cache->size) {
+        fprintf(stderr, "Cache full or not initialized\n");
+        return -1;
     }
+
+    // Check if key already exists
+    if (g_hash_table_contains(global_cache->hash_table, &key)) {
+        fprintf(stderr, "Key %d already exists in cache\n", key);
+        return -1;
+    }
+
+    CachePage *page = malloc(sizeof(CachePage));
+    if (!page) {
+        perror("Failed to allocate cache page");
+        return -1;
+    }
+
+    page->key = key;
+    page->dirty = dirty;
+    page->entry = entry;
+
+    // Add to hash table
+    g_hash_table_insert(global_cache->hash_table, &page->key, page);
+
+    // Add to pages array
+    global_cache->pages[global_cache->count++] = page;
+    return 0;
 }
 
-void free_cache() {
-    CacheNode *current = cache.head;
-    while (current) {
-        CacheNode *next = current->next;
-        free(current);
-        current = next;
+// Get entry from cache
+IndexEntry *cache_get_entry(int key) {
+    if (!global_cache) {
+        fprintf(stderr, "Cache not initialized\n");
+        return NULL;
     }
-    cache.head = NULL;
-    cache.tail = NULL;
-    cache.size = 0;
+
+    CachePage *page = g_hash_table_lookup(global_cache->hash_table, &key);
+    if (page) {
+        return page->entry;
+    }
+
+    // Cache miss - load from index
+    IndexEntry *entry = index_get_entry(key);
+    if (!entry) {
+        return NULL;
+    }
+
+    // Add to cache if possible
+    if (global_cache->count < global_cache->size) {
+        cache_add_entry(key, entry, 0);
+    }
+    
+    return entry;
+}
+
+// Evict an entry from cache
+int cache_evict_entry() {
+    if (!global_cache || global_cache->count == 0) {
+        return -1;
+    }
+
+    int idx = cache_get_eviction_index();
+    CachePage *page = global_cache->pages[idx];
+
+    // Remove from hash table
+    g_hash_table_remove(global_cache->hash_table, &page->key);
+
+    // Compact pages array
+    global_cache->pages[idx] = global_cache->pages[--global_cache->count];
+    global_cache->pages[global_cache->count] = NULL;
+
+    cache_page_destroy(page);
+    return 0;
+}
+
+// Delete an entry
+int cache_delete_entry(int key) {
+    if (!global_cache) {
+        return -1;
+    }
+
+    CachePage *page = g_hash_table_lookup(global_cache->hash_table, &key);
+    if (page) {
+        page->entry->delete_flag = 1;
+        page->dirty = 1;
+        return 0;
+    }
+
+    return index_delete_entry(key);
+}
+
+// Cleanup cache
+void cache_cleanup() {
+    if (!global_cache) return;
+
+    g_hash_table_destroy(global_cache->hash_table);
+    g_rand_free(global_cache->rng);
+    
+    for (int i = 0; i < global_cache->count; i++) {
+        cache_page_destroy(global_cache->pages[i]);
+    }
+    
+    free(global_cache->pages);
+    free(global_cache);
+    global_cache = NULL;
 }
