@@ -58,7 +58,9 @@ dkms.conf
 DataSet/
 DatasetTest/
 Gdataset/
+build/
 bin/
+tmp/
 .vscode/
 
 # Ignore .dat .txt

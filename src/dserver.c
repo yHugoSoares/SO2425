@@ -19,7 +19,6 @@ int main(int argc, char *argv[]) {
 
     MensagemCliente pedido;
 
-    printf("%s %s %s %s", pedido.authors, pedido.title, pedido.year, pedido.path);
     int running = 1;
 
     while (running) {

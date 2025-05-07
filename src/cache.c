@@ -2,22 +2,12 @@
 #include <stdio.h>
 #include <glib.h>
 #include <string.h>
-#include <index.h>
 #include <time.h>
 
-typedef struct CachePage {
-    int dirty;
-    int key;
-    IndexEntry *entry;
-} CachePage;
+#include "index.h"
+#include "cache.h"
+#include "common.h"
 
-typedef struct {
-    GHashTable *hash_table;  // Maps keys to CachePage*
-    CachePage **pages;       // Array of cache pages
-    int size;                // Total cache capacity
-    int count;               // Current number of entries
-    GRand *rng;              // Random number generator
-} Cache;
 
 // Global cache instance
 Cache *global_cache = NULL;
@@ -57,6 +47,36 @@ int cache_init(int cache_size) {
     global_cache->count = 0;
     global_cache->rng = g_rand_new_with_seed(time(NULL));
 
+    return 0;
+}
+
+int cache_load_metadata() {
+    if (!global_cache) {
+        fprintf(stderr, "Cache not initialized\n");
+        return -1;
+    }
+
+    // Open metadata file for reading
+    FILE *file = fopen(METADATA_FILE, "rb");
+    if (!file) {
+        perror("Failed to open metadata file for reading");
+        return -1;
+    }
+
+    // Read metadata entries and add them to the cache
+    IndexEntry entry;
+    while (fread(&entry, sizeof(IndexEntry), 1, file) == 1) {
+        IndexEntry *entry_copy = malloc(sizeof(IndexEntry));
+        if (!entry_copy) {
+            perror("Failed to allocate memory for metadata entry");
+            fclose(file);
+            return -1;
+        }
+        memcpy(entry_copy, &entry, sizeof(IndexEntry));
+        cache_add_entry(entry_copy->delete_flag, entry_copy, 0);
+    }
+
+    fclose(file);
     return 0;
 }
 

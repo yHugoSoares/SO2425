@@ -8,6 +8,7 @@ SRC_DIR = src
 BUILD_DIR = build
 BIN_DIR = bin
 INCLUDE_DIR = includes
+TMP_DIR = tmp
 
 # Source files
 # Source files
@@ -28,13 +29,17 @@ SERVER_EXEC = $(BIN_DIR)/dserver
 # Build rules
 all: $(CLIENT_EXEC) $(SERVER_EXEC)
 
+prepare:
+	@echo "[PREPARE] Creating build and bin directories."
+	@mkdir -p $(BUILD_DIR) $(BIN_DIR) $(TMP_DIR)
+
 $(CLIENT_EXEC): $(BUILD_DIR)/dclient.o
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(BUILD_DIR)/dclient.o -o $(CLIENT_EXEC) $(LDFLAGS)
 
 $(SERVER_EXEC): $(BUILD_DIR)/dserver.o $(BUILD_DIR)/handle_request.o $(BUILD_DIR)/cache.o $(BUILD_DIR)/common.o $(BUILD_DIR)/index.o
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(BUILD_DIR)/dserver.o $(BUILD_DIR)/handle_request.o $(BUILD_DIR)/cache.o $(BUILD_DIR)/common.o -o $(BUILD_DIR)/index.o $(SERVER_EXEC) $(LDFLAGS)
+	$(CC) $(BUILD_DIR)/dserver.o $(BUILD_DIR)/handle_request.o $(BUILD_DIR)/cache.o $(BUILD_DIR)/common.o $(BUILD_DIR)/index.o -o $(SERVER_EXEC) $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)

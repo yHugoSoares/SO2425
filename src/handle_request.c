@@ -52,6 +52,7 @@ int handle_shutdown(MensagemCliente pedido) {
     } else {
         perror("Erro ao abrir FIFO de resposta");
     }
+    save_metadata();
 
     return 0;  
 }
@@ -59,22 +60,18 @@ int handle_shutdown(MensagemCliente pedido) {
 int handle_add(MensagemCliente pedido) {
     char resposta[256];
 
-    if (metadata.count >= MAX_DOCS) {
-        snprintf(resposta, sizeof(resposta), "Erro: limite de documentos atingido.");
+    // Create a new metadata entry
+    IndexEntry *entry = create_index_entry(pedido.title, pedido.authors, pedido.year, pedido.path, 0);
+    if (!entry) {
+        snprintf(resposta, sizeof(resposta), "Erro: falha ao criar entrada de metadados.");
+    } else if (cache_add_entry(index_get_next_key(), entry, 1) != 0) {
+        snprintf(resposta, sizeof(resposta), "Erro: falha ao adicionar entrada ao cache.");
+        destroy_index_entry(entry);
     } else {
-        Document doc;
-        doc.id = ++metadata.last_id;
-        strncpy(doc.title, pedido.title, MAX_TITLE_SIZE - 1);
-        strncpy(doc.authors, pedido.authors, MAX_AUTHOR_SIZE - 1);
-        strncpy(doc.year, pedido.year, MAX_YEAR_SIZE - 1);
-        strncpy(doc.path, pedido.path, MAX_PATH_SIZE - 1);
-
-        metadata.docs[metadata.count++] = doc;
-        save_metadata();
-
-        snprintf(resposta, sizeof(resposta), "Document %d indexed", doc.id);
+        snprintf(resposta, sizeof(resposta), "Documento indexado com sucesso.");
     }
 
+    // Send response to client
     char fifo_resposta[MAX_FIFO_NAME];
     snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
     int fd_resp = open(fifo_resposta, O_WRONLY);
