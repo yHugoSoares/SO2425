@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
             pedido.path[MAX_PATH_SIZE - 1] = '\0';
                         break;
 
-        case 'c': // Contar linhas
+        case 'c': // Listar documentos
             if (argc != 3) {
                 fprintf(stderr, "Uso: %s -c <document_key>\n", argv[0]);
                 return 1;
@@ -57,18 +57,24 @@ int main(int argc, char *argv[]) {
             pedido.key = atoi(argv[2]);
             break;
 
-        case 'l': // Listar documentos
-            // Sem argumentos adicionais
-            break;
-
-        case 's': // Procurar por palavra-chave
-            if (argc != 5) {
-                fprintf(stderr, "Uso: %s -s <document_key> <keyword> <n_procs>\n", argv[0]);
+        case 'l': // Contar linhas
+            if(argc != 4){
+                fprintf(stderr, "Uso: %s -l <document_key> <keyword>\n",argv[0]);
                 return 1;
             }
             pedido.key = atoi(argv[2]);
             strncpy(pedido.keyword, argv[3], MAX_KEYWORD_SIZE - 1);
-            pedido.n_procs = atoi(argv[4]);
+            pedido.keyword[MAX_KEYWORD_SIZE - 1] = '\0';
+            break;
+
+        case 's': // Procurar por palavra-chave
+            if (argc != 3) {
+                fprintf(stderr, "Uso: %s -s <keyword>\n", argv[0]);
+                return 1;
+            }
+            
+            strncpy(pedido.keyword, argv[2], MAX_KEYWORD_SIZE - 1);
+            
             break;
 
         default:

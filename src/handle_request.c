@@ -8,7 +8,9 @@
 #include <sys/wait.h>
 #include "common.h"
 #include "cache.h"
+#include "index.h"
 
+#define MAX_PROCESS 10
 Metadata metadata;
 
 
@@ -155,6 +157,115 @@ int handle_remove(MensagemCliente pedido) {
 }
 
 
+int handle_lines_number(MensagemCliente pedido, const char *document_folder){
+    char resposta[256];
+    //int lines_number = 0;
+    int found = 0;// função para retornar o numero de linhas que contêm uma dada palavra
+    for (int i = 0; i< metadata.count;i++){
+        int resp;
+        if(metadata.docs[i].id== pedido.key){
+            if (metadata.docs[i].path[0] != '\0'){
+                resp= conta_linhas_com_palavra(metadata.docs[i].path,pedido.keyword);
+                found=1;
+            }
+        }
+        if (found == 0){
+            snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
+        }
+        else{
+            snprintf(resposta, sizeof(resposta), "Document %d found in %d lines.", pedido.key, resp);
+        }
+        break;
+    }
+    char fifo_resposta[MAX_FIFO_NAME];
+    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d",pedido.pid);
+    int fd_resp = open(fifo_resposta, O_WRONLY);
+    if (fd_resp != -1) {
+        write(fd_resp, resposta, strlen(resposta) + 1);
+        close(fd_resp);
+    } 
+    else {
+        perror("Erro ao abrir FIFO de resposta");
+    }
+    return 1;
+}
+
+
+int handle_search(MensagemCliente pedido, const char *document_folder ){
+// função que devolve os ficheiros onde uma determinada palavra esta presente
+char resposta[256];
+int found = 0;
+int ativos=0;
+for (int i = 0; i< metadata.count;i++){
+    int fd[2];
+    if(pipe(fd)==-1){
+        perror("Erro ao criar pipe");
+        return 0;
+    }
+    if(ativos>= MAX_PROCESS){
+        int status;
+        wait(&status);
+        ativos--;
+    }
+    pid_t pid = fork();
+    if(pid==-1){
+        perror("Erro ao criar processo");
+        close(fd[0]);
+        close(fd[1]);
+        return 0;
+    }
+    if(pid==0){
+        ativos++;
+        close(fd[0]);
+        char file[256];
+        snprintf(file, sizeof(file), "%s/%s", document_folder, metadata.docs[i].path);
+        int res= execlp("grep","grep","-q",pedido.keyword,file,NULL);
+        if(res==-1){
+            perror("Erro ao executar grep");
+            close(fd[1]);
+            exit(1);
+        }
+        _exit(EXIT_FAILURE);
+        }
+        else{
+            close(fd[1]);
+            char buffer[256];
+            int bytes_read = read(fd[0], buffer, sizeof(buffer)-1);
+            if(bytes_read==-1){
+                perror("Erro ao ler pipe");
+                return 0;
+            }
+            int status;
+            waitpid(pid, &status, 0);
+            ativos--;
+            if(WIFEXITED(status)&& WEXITSTATUS(status)==0){
+                found++;
+                strcat(resposta,metadata.docs[i].path);
+                strcat(resposta,"\n");
+            }
+        }
+        
+    }
+    while(ativos>0){
+        wait(NULL);
+        ativos--;
+    }
+
+    if(found==0){
+        stpcpy(resposta,"Nenhum documento possui a palavra pedida");
+    }
+    char fifo_resposta[MAX_FIFO_NAME];
+    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d",pedido.pid);
+    int fd_resp = open(fifo_resposta, O_WRONLY);
+    if (fd_resp != -1) {
+        write(fd_resp, resposta, strlen(resposta) + 1);
+        close(fd_resp);
+    } 
+    else {
+        perror("Erro ao abrir FIFO de resposta");
+    }
+    return 1;
+}
 
 
 int handle_request(MensagemCliente pedido, const char *document_folder) {
@@ -167,10 +278,10 @@ int handle_request(MensagemCliente pedido, const char *document_folder) {
             return handle_consulta(pedido);
         case 'd':
             return handle_remove(pedido);
-        // case 'l':
-        //     return handle_lines_number(pedido, document_folder); // por fazer 
-        // case 's':
-        //     return handle_search(pedido, document_folder); // por fazer
+        case 'l':
+            return handle_lines_number(pedido, document_folder); // por fazer os testes e comprovar
+        case 's':
+            return handle_search(pedido, document_folder); // por fazer os testes e comprovar devido a não conseguir anexar os ficheiros
         default:
             fprintf(stderr, "Operação desconhecida.");
             return 1;
