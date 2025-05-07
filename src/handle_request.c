@@ -12,7 +12,43 @@
 
 #define MAX_PROCESS 10
 Metadata metadata;
+extern Cache *global_cache;
 
+void get_from_cache_to_metadata() {
+    if (!global_cache) {
+        fprintf(stderr, "Cache not initialized\n");
+        return;
+    }
+
+    // Reset metadata
+    metadata.count = 0;
+
+    // Iterate through all cache pages
+    for (int i = 0; i < global_cache->count; i++) {
+        CachePage *page = global_cache->pages[i];
+        if (!page || !page->entry) {
+            continue;
+        }
+
+        // Populate metadata with cache entry
+        Document *doc = &metadata.docs[metadata.count++];
+        doc->id = page->key;
+        strncpy(doc->title, page->entry->Title, sizeof(doc->title) - 1);
+        doc->title[sizeof(doc->title) - 1] = '\0';
+        strncpy(doc->authors, page->entry->authors, sizeof(doc->authors) - 1);
+        doc->authors[sizeof(doc->authors) - 1] = '\0';
+        strncpy(doc->year, page->entry->year, sizeof(doc->year) - 1);
+        doc->year[sizeof(doc->year) - 1] = '\0';
+        strncpy(doc->path, page->entry->path, sizeof(doc->path) - 1);
+        doc->path[sizeof(doc->path) - 1] = '\0';
+
+        // Ensure metadata does not exceed its maximum capacity
+        if (metadata.count >= MAX_DOCS) {
+            fprintf(stderr, "Metadata capacity reached. Some entries may not be transferred from cache.\n");
+            break;
+        }
+    }
+}
 
 // NOT FULLY CORRECT
 void save_metadata() {
@@ -21,6 +57,8 @@ void save_metadata() {
         perror("save_metadata");
         return;
     }
+
+    get_from_cache_to_metadata();
 
     ssize_t written = write(fd, &metadata, sizeof(metadata));
     if (written != sizeof(metadata)) {
