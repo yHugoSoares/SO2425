@@ -4,10 +4,16 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <stdio.h>
+#include "cache.h"
 #include "handle_request.h"
 #include "common.h"
 
 int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "Uso: %s <document_folder> <cache_size>\n", argv[0]);
+        return 1;
+    }
     mkfifo(REQUEST_PIPE, 0666);
     printf("Servidor iniciado. À escuta de pedidos...\n");
 
@@ -18,6 +24,8 @@ int main(int argc, char *argv[]) {
     }
 
     MensagemCliente pedido;
+    int cache_size = atoi(argv[2]);
+    cache_init(cache_size);
 
     int running = 1;
 
