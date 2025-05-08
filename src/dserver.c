@@ -27,6 +27,11 @@ int main(int argc, char *argv[]) {
     int cache_size = atoi(argv[2]);
     cache_init(cache_size);
 
+    // Load the index file into the cache
+    if (index_load_file_to_cache() != 0) {
+        fprintf(stderr, "Failed to load index file into cache\n");
+    }
+
     int running = 1;
 
     while (running) {

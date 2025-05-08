@@ -68,15 +68,16 @@ int main(int argc, char *argv[]) {
             break;
 
         case 's': // Procurar por palavra-chave
-            if (argc != 3) {
-                fprintf(stderr, "Uso: %s -s <keyword>\n", argv[0]);
+            if (argc != 4) {
+                fprintf(stderr, "Uso: %s -s <keyword> <nr_processos>\n", argv[0]);
                 return 1;
             }
-            
             strncpy(pedido.keyword, argv[2], MAX_KEYWORD_SIZE - 1);
+            pedido.keyword[MAX_KEYWORD_SIZE - 1] = '\0';
+            pedido.n_procs = atoi(argv[3]);
             
             break;
-
+        
         default:
             fprintf(stderr, "Operação inválida: %s\n", argv[1]);
             return 1;

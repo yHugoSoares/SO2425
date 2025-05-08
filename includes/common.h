@@ -16,6 +16,7 @@
 #define MAX_YEAR_SIZE 5
 #define MAX_PATH_SIZE 64
 #define MAX_KEYWORD_SIZE 32
+#define MAX_PROCESS 10
 
 
 #define REQUEST_PIPE "tmp/request_pipe"

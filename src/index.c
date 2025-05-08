@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "index.h"
+#include "cache.h"
 
 int Next_key = 0;
 
@@ -35,13 +36,54 @@ int destroy_index_entry(IndexEntry *entry) {
     return 0;
 }
 
-int index_add_entry(IndexEntry *entry) {
-
-    // Open the index file for writing
-    int index_fd = open(INDEX_FILE, O_APPEND | O_CREAT, 0600);
+int index_load_file_to_cache() {
+    // Open the index file for reading
+    int index_fd = open(INDEX_FILE, O_RDONLY);
     if (index_fd == -1) {
         perror("Failed to open index file");
-        destroy_index_entry(entry);
+        return -1;
+    }
+
+    // Read entries from the file
+    IndexEntry entry;
+    int key = 0;
+    while (read(index_fd, &entry, sizeof(IndexEntry)) == sizeof(IndexEntry)) {
+        // Skip deleted entries
+        if (entry.delete_flag) {
+            key++;
+            continue;
+        }
+
+        // Allocate memory for the entry
+        IndexEntry *entry_copy = malloc(sizeof(IndexEntry));
+        if (!entry_copy) {
+            perror("Failed to allocate memory for index entry");
+            close(index_fd);
+            return -1;
+        }
+        memcpy(entry_copy, &entry, sizeof(IndexEntry));
+
+        // Add the entry to the cache
+        if (cache_add_entry(key, entry_copy, 0) != 0) {
+            fprintf(stderr, "Failed to add entry with key %d to cache\n", key);
+            free(entry_copy);
+        }
+
+        key++;
+    }
+
+    // Update the Next_key variable
+    Next_key = key;
+
+    close(index_fd);
+    return 0;
+}
+
+int index_add_entry(IndexEntry *entry) {
+    // Open the index file for writing
+    int index_fd = open(INDEX_FILE, O_APPEND | O_CREAT | O_WRONLY, 0600);
+    if (index_fd == -1) {
+        perror("Failed to open index file");
         return -1;
     }
 
@@ -49,21 +91,20 @@ int index_add_entry(IndexEntry *entry) {
     if (write(index_fd, entry, sizeof(struct index_entry)) <= 0) {
         perror("Failed to write index entry to file");
         close(index_fd);
-        destroy_index_entry(entry);
         return -1;
     }
 
-    destroy_index_entry(entry);
+    close(index_fd);
+
+    // Do not destroy the entry here; the caller is responsible for managing its memory
     return Next_key++;
 }
 
 int index_write_dirty_entry(IndexEntry *entry, int key) {
-
-    // Open the index file for writing
-    int index_fd = open(INDEX_FILE, O_WRONLY | O_CREAT, 0600);
+    // Open the index file for reading and writing
+    int index_fd = open(INDEX_FILE, O_RDWR | O_CREAT, 0600);
     if (index_fd == -1) {
         perror("Failed to open index file");
-        destroy_index_entry(entry);
         return -1;
     }
 
@@ -79,10 +120,10 @@ int index_write_dirty_entry(IndexEntry *entry, int key) {
     if (write(index_fd, entry, sizeof(struct index_entry)) <= 0) {
         perror("Failed to write index entry to file");
         close(index_fd);
-        destroy_index_entry(entry);
         return -1;
     }
 
+    close(index_fd);
     return 0;
 }
 

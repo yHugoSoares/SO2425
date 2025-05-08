@@ -229,79 +229,76 @@ int handle_lines_number(MensagemCliente pedido, const char *document_folder){
 }
 
 
-int handle_search(MensagemCliente pedido, const char *document_folder ){
-// função que devolve os ficheiros onde uma determinada palavra esta presente
-char resposta[256];
-int found = 0;
-int ativos=0;
-for (int i = 0; i< metadata.count;i++){
-    int fd[2];
-    if(pipe(fd)==-1){
-        perror("Erro ao criar pipe");
-        return 0;
-    }
-    if(ativos>= MAX_PROCESS){
-        int status;
-        wait(&status);
-        ativos--;
-    }
-    pid_t pid = fork();
-    if(pid==-1){
-        perror("Erro ao criar processo");
-        close(fd[0]);
-        close(fd[1]);
-        return 0;
-    }
-    if(pid==0){
-        ativos++;
-        close(fd[0]);
-        char file[256];
-        snprintf(file, sizeof(file), "%s/%s", document_folder, metadata.docs[i].path);
-        int res= execlp("grep","grep","-q",pedido.keyword,file,NULL);
-        if(res==-1){
-            perror("Erro ao executar grep");
-            close(fd[1]);
-            exit(1);
-        }
-        _exit(EXIT_FAILURE);
-        }
-        else{
-            close(fd[1]);
-            char buffer[256];
-            int bytes_read = read(fd[0], buffer, sizeof(buffer)-1);
-            if(bytes_read==-1){
-                perror("Erro ao ler pipe");
-                return 0;
-            }
+int handle_search(MensagemCliente pedido, const char *document_folder) {
+    char resposta[1024] = "";  // Increased buffer size for multiple file paths
+    int found = 0;
+    int active_processes = 0;
+
+    for (int i = 0; i < metadata.count; i++) {
+        // Limit the number of active child processes to pedido.n_procs
+        if (active_processes >= pedido.n_procs) {
             int status;
-            waitpid(pid, &status, 0);
-            ativos--;
-            if(WIFEXITED(status)&& WEXITSTATUS(status)==0){
+            wait(&status);  // Wait for a child process to finish
+            active_processes--;
+        }
+
+        pid_t pid = fork();
+        if (pid == -1) {
+            perror("Erro ao criar processo");
+            return 0;
+        }
+
+        if (pid == 0) {
+            // Child process
+            char file[256];
+            snprintf(file, sizeof(file), "%s/%s", document_folder, metadata.docs[i].path);
+
+            // Execute grep to search for the keyword in the file
+            execlp("grep", "grep", "-q", pedido.keyword, file, NULL);
+
+            // If execlp fails
+            perror("Erro ao executar grep");
+            _exit(EXIT_FAILURE);
+        } else {
+            // Parent process
+            active_processes++;
+
+            int status;
+            waitpid(pid, &status, 0);  // Wait for the specific child process to finish
+            active_processes--;
+
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+                // If grep found the keyword, add the file path to the response
                 found++;
-                strcat(resposta,metadata.docs[i].path);
-                strcat(resposta,"\n");
+                strncat(resposta, metadata.docs[i].path, sizeof(resposta) - strlen(resposta) - 2);
+                strncat(resposta, "\n", sizeof(resposta) - strlen(resposta) - 1);
             }
         }
-        
-    }
-    while(ativos>0){
-        wait(NULL);
-        ativos--;
     }
 
-    if(found==0){
-        stpcpy(resposta,"Nenhum documento possui a palavra pedida");
+    // Wait for any remaining child processes
+    while (active_processes > 0) {
+        wait(NULL);
+        active_processes--;
     }
+
+    // If no files were found, set an appropriate response
+    if (found == 0) {
+        strncpy(resposta, "Nenhum documento possui a palavra pedida", sizeof(resposta) - 1);
+        resposta[sizeof(resposta) - 1] = '\0';
+    }
+
+    // Send the response to the client
     char fifo_resposta[MAX_FIFO_NAME];
-    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d",pedido.pid);
+    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
     int fd_resp = open(fifo_resposta, O_WRONLY);
     if (fd_resp != -1) {
         write(fd_resp, resposta, strlen(resposta) + 1);
         close(fd_resp);
-    } 
-    else {
+    } else {
         perror("Erro ao abrir FIFO de resposta");
     }
+
     return 1;
 }
 

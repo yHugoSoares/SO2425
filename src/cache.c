@@ -8,7 +8,6 @@
 #include "cache.h"
 #include "common.h"
 
-
 // Global cache instance
 Cache *global_cache = NULL;
 
@@ -45,11 +44,91 @@ int cache_init(int cache_size) {
         
     global_cache->size = cache_size;
     global_cache->count = 0;
-    global_cache->rng = g_rand_new_with_seed(time(NULL));
 
     return 0;
 }
 
+// Destroy a cache page
+void cache_page_destroy(CachePage *page) {
+    if (!page) return;
+
+    if (page->dirty) {
+        if (index_write_dirty_entry(page->entry, page->key) != 0) {
+            fprintf(stderr, "Failed to write dirty entry for key %d\n", page->key);
+        }
+    }
+
+    if (page->entry) {
+        destroy_index_entry(page->entry);
+    }
+
+    free(page);
+}
+
+// Evict an entry from cache to metadata.dat
+int cache_evict_entry() {
+    if (!global_cache || global_cache->count == 0) {
+        return -1;
+    }
+
+    // Select a random page to evict
+    int idx = g_rand_int_range(g_rand_new(), 0, global_cache->count);
+    CachePage *page = global_cache->pages[idx];
+
+    // Write the entry back to metadata.dat
+    FILE *file = fopen(METADATA_FILE, "ab");
+    if (!file) {
+        perror("Failed to open metadata file for eviction");
+        return -1;
+    }
+    fwrite(page->entry, sizeof(IndexEntry), 1, file);
+    fclose(file);
+
+    // Remove from hash table
+    g_hash_table_remove(global_cache->hash_table, &page->key);
+
+    // Compact pages array
+    global_cache->pages[idx] = global_cache->pages[--global_cache->count];
+    global_cache->pages[global_cache->count] = NULL;
+
+    cache_page_destroy(page);
+    return 0;
+}
+
+// Add entry to cache
+int cache_add_entry(int key, IndexEntry *entry, int dirty) {
+    if (!global_cache) {
+        fprintf(stderr, "Cache not initialized\n");
+        return -1;
+    }
+
+    // Evict an entry if the cache is full
+    if (global_cache->count >= global_cache->size) {
+        if (cache_evict_entry() != 0) {
+            fprintf(stderr, "Failed to evict entry from cache\n");
+            return -1;
+        }
+    }
+
+    CachePage *page = malloc(sizeof(CachePage));
+    if (!page) {
+        perror("Failed to allocate cache page");
+        return -1;
+    }
+
+    page->key = key;
+    page->dirty = dirty;
+    page->entry = entry; // Cache takes ownership of the entry
+
+    // Add to hash table
+    g_hash_table_insert(global_cache->hash_table, &page->key, page);
+
+    // Add to pages array
+    global_cache->pages[global_cache->count++] = page;
+    return 0;
+}
+
+// Load metadata from metadata.dat into cache
 int cache_load_metadata() {
     if (!global_cache) {
         fprintf(stderr, "Cache not initialized\n");
@@ -78,133 +157,4 @@ int cache_load_metadata() {
 
     fclose(file);
     return 0;
-}
-
-// Destroy a cache page
-void cache_page_destroy(CachePage *page) {
-    if (!page) return;
-    
-    if (page->dirty) {
-        index_write_dirty_entry(page->entry, page->key);
-    }
-    
-    if (page->entry) {
-        destroy_index_entry(page->entry);
-    }
-    
-    free(page);
-}
-
-// Get a random page index to evict
-int cache_get_eviction_index() {
-    return g_rand_int_range(global_cache->rng, 0, global_cache->count);
-}
-
-// Add entry to cache
-int cache_add_entry(int key, IndexEntry *entry, int dirty) {
-    if (!global_cache || global_cache->count >= global_cache->size) {
-        fprintf(stderr, "Cache full or not initialized\n");
-        return -1;
-    }
-
-    // Check if key already exists
-    if (g_hash_table_contains(global_cache->hash_table, &key)) {
-        fprintf(stderr, "Key %d already exists in cache\n", key);
-        return -1;
-    }
-
-    CachePage *page = malloc(sizeof(CachePage));
-    if (!page) {
-        perror("Failed to allocate cache page");
-        return -1;
-    }
-
-    page->key = key;
-    page->dirty = dirty;
-    page->entry = entry;
-
-    // Add to hash table
-    g_hash_table_insert(global_cache->hash_table, &page->key, page);
-
-    // Add to pages array
-    global_cache->pages[global_cache->count++] = page;
-    return 0;
-}
-
-// Get entry from cache
-IndexEntry *cache_get_entry(int key) {
-    if (!global_cache) {
-        fprintf(stderr, "Cache not initialized\n");
-        return NULL;
-    }
-
-    CachePage *page = g_hash_table_lookup(global_cache->hash_table, &key);
-    if (page) {
-        return page->entry;
-    }
-
-    // Cache miss - load from index
-    IndexEntry *entry = index_get_entry(key);
-    if (!entry) {
-        return NULL;
-    }
-
-    // Add to cache if possible
-    if (global_cache->count < global_cache->size) {
-        cache_add_entry(key, entry, 0);
-    }
-    
-    return entry;
-}
-
-// Evict an entry from cache
-int cache_evict_entry() {
-    if (!global_cache || global_cache->count == 0) {
-        return -1;
-    }
-
-    int idx = cache_get_eviction_index();
-    CachePage *page = global_cache->pages[idx];
-
-    // Remove from hash table
-    g_hash_table_remove(global_cache->hash_table, &page->key);
-
-    // Compact pages array
-    global_cache->pages[idx] = global_cache->pages[--global_cache->count];
-    global_cache->pages[global_cache->count] = NULL;
-
-    cache_page_destroy(page);
-    return 0;
-}
-
-// Delete an entry
-int cache_delete_entry(int key) {
-    if (!global_cache) {
-        return -1;
-    }
-
-    CachePage *page = g_hash_table_lookup(global_cache->hash_table, &key);
-    if (page) {
-        page->entry->delete_flag = 1;
-        page->dirty = 1;
-        return 0;
-    }
-
-    return index_delete_entry(key);
-}
-
-// Cleanup cache
-void cache_cleanup() {
-    if (!global_cache) return;
-
-    g_hash_table_destroy(global_cache->hash_table);
-    g_rand_free(global_cache->rng);
-    
-    for (int i = 0; i < global_cache->count; i++) {
-        cache_page_destroy(global_cache->pages[i]);
-    }
-    
-    free(global_cache->pages);
-    free(global_cache);
-    global_cache = NULL;
 }

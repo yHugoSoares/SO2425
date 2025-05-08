@@ -13,6 +13,7 @@ typedef struct index_entry {
 
 IndexEntry *create_index_entry(char *title, char *authors, char *year, char *path, int delete_flag);
 int destroy_index_entry(IndexEntry *entry);
+int index_load_file_to_cache();
 int index_add_entry(IndexEntry *entry);
 int index_write_dirty_entry(IndexEntry *entry, int key);
 int index_delete_entry(int key);
