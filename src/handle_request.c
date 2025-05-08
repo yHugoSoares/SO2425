@@ -60,8 +60,9 @@ void save_metadata() {
 
     get_from_cache_to_metadata();
 
-    ssize_t written = write(fd, &metadata, sizeof(metadata));
-    if (written != sizeof(metadata)) {
+    // Write only the valid entries in the metadata
+    ssize_t written = write(fd, metadata.docs, metadata.count * sizeof(Document));
+    if (written != metadata.count * sizeof(Document)) {
         perror("Error writing metadata");
     }
 
@@ -75,7 +76,17 @@ void load_metadata() {
         metadata.last_id = 0;
         return;
     }
-    read(fd, &metadata, sizeof(Metadata));
+
+    // Read the file into the docs array
+    ssize_t bytes_read = read(fd, metadata.docs, MAX_DOCS * sizeof(Document));
+    if (bytes_read < 0) {
+        perror("Error reading metadata");
+        metadata.count = 0;
+    } else {
+        // Calculate the number of valid entries
+        metadata.count = bytes_read / sizeof(Document);
+    }
+
     close(fd);
 }
 

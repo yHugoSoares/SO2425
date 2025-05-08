@@ -1,7 +1,7 @@
 #ifndef INDEX_H
 #define INDEX_H
 
-#define INDEX_FILE "index"
+#define INDEX_FILE "metadata.dat"
 
 typedef struct index_entry {
     int delete_flag;
