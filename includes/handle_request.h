@@ -18,18 +18,18 @@ extern char *document_folder;
 // Function declarations
 void save_metadata();
 void load_metadata();
-int handle_shutdown(MensagemCliente pedido);
-int handle_add(MensagemCliente pedido);
-int handle_consulta(MensagemCliente pedido);
-int handle_remove(MensagemCliente pedido);
-// int handle_lines_number(MensagemCliente pedido, const char *document_folder);
-// int handle_search(MensagemCliente pedido, const char *document_folder);
-int handle_request(MensagemCliente pedido, const char *document_folder);
-int handle_shutdown(MensagemCliente pedido);
-int handle_add(MensagemCliente pedido);
-int handle_consulta(MensagemCliente pedido);
-int handle_remove(MensagemCliente pedido);
-int handle_lines_number(MensagemCliente pedido, const char *document_folder);
-// int handle_search(MensagemCliente pedido, const char *document_folder);
+int handle_shutdown(Pedido pedido);
+int handle_add(Pedido pedido);
+int handle_consulta(Pedido pedido);
+int handle_remove(Pedido pedido);
+// int handle_lines_number(Pedido pedido, const char *document_folder);
+// int handle_search(Pedido pedido, const char *document_folder);
+int handle_request(Pedido pedido, const char *document_folder);
+int handle_shutdown(Pedido pedido);
+int handle_add(Pedido pedido);
+int handle_consulta(Pedido pedido);
+int handle_remove(Pedido pedido);
+int handle_lines_number(Pedido pedido, const char *document_folder);
+// int handle_search(Pedido pedido, const char *document_folder);
 
 #endif /* HANDLE_REQUEST_H */

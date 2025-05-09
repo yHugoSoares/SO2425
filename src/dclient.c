@@ -13,8 +13,8 @@ int main(int argc, char *argv[]) {
     }
 
     pid_t pid = getpid();
-    MensagemCliente pedido;
-    memset(&pedido, 0, sizeof(MensagemCliente));
+    Pedido pedido;
+    memset(&pedido, 0, sizeof(Pedido));
     pedido.pid = pid;
     pedido.operacao = argv[1][1];  
 
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     mkfifo(fifo_resposta, 0666);
 
     // Enviar pedido
-    write(fd_request, &pedido, sizeof(MensagemCliente));
+    write(fd_request, &pedido, sizeof(Pedido));
     close(fd_request);
 
     // Ler resposta

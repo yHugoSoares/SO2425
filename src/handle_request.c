@@ -50,9 +50,9 @@ void get_from_cache_to_metadata() {
     }
 }
 
-// NOT FULLY CORRECT
+// Saves the metadata to a file
 void save_metadata() {
-    int fd = open(METADATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    int fd = open(METADATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0666); // Use O_APPEND instead of O_TRUNC
     if (fd == -1) {
         perror("save_metadata");
         return;
@@ -90,7 +90,7 @@ void load_metadata() {
     close(fd);
 }
 
-int handle_shutdown(MensagemCliente pedido) {
+int handle_shutdown(Pedido pedido) {
     char resposta[] = "Servidor a terminar...";
 
     char fifo_resposta[MAX_FIFO_NAME];
@@ -108,7 +108,7 @@ int handle_shutdown(MensagemCliente pedido) {
     return 0;  
 }
 
-int handle_add(MensagemCliente pedido) {
+int handle_add(Pedido pedido) {
     char resposta[256];
 
     // Create a new metadata entry
@@ -136,7 +136,7 @@ int handle_add(MensagemCliente pedido) {
     return 1;
 }
 
-int handle_consulta(MensagemCliente pedido) {
+int handle_consulta(Pedido pedido) {
     char resposta[512];
     int found = 0;
 
@@ -170,7 +170,7 @@ int handle_consulta(MensagemCliente pedido) {
     return 1;
 }
 
-int handle_remove(MensagemCliente pedido) {
+int handle_remove(Pedido pedido) {
     char resposta[256];
     int found = 0;
 
@@ -206,7 +206,7 @@ int handle_remove(MensagemCliente pedido) {
 }
 
 
-int handle_lines_number(MensagemCliente pedido, const char *document_folder){
+int handle_lines_number(Pedido pedido, const char *document_folder){
     char resposta[256];
     //int lines_number = 0;
     int found = 0;// função para retornar o numero de linhas que contêm uma dada palavra
@@ -240,7 +240,7 @@ int handle_lines_number(MensagemCliente pedido, const char *document_folder){
 }
 
 
-int handle_search(MensagemCliente pedido, const char *document_folder) {
+int handle_search(Pedido pedido, const char *document_folder) {
     char resposta[1024] = "";  // Increased buffer size for multiple file paths
     int found = 0;
     int active_processes = 0;
@@ -314,7 +314,7 @@ int handle_search(MensagemCliente pedido, const char *document_folder) {
 }
 
 
-int handle_request(MensagemCliente pedido, const char *document_folder) {
+int handle_request(Pedido pedido, const char *document_folder) {
     switch (pedido.operacao) {
         case 'f':
             return handle_shutdown(pedido);

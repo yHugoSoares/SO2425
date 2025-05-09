@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    MensagemCliente pedido;
+    Pedido pedido;
     int cache_size = atoi(argv[2]);
     cache_init(cache_size);
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     int running = 1;
 
     while (running) {
-        ssize_t bytes = read(fd_request, &pedido, sizeof(MensagemCliente));
+        ssize_t bytes = read(fd_request, &pedido, sizeof(Pedido));
         if (bytes <= 0) {
             continue;
         }

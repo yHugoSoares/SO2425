@@ -49,7 +49,7 @@ typedef struct {
     int lines;
     char keyword[MAX_KEYWORD_SIZE];
     int n_procs;
-} MensagemCliente;
+} Pedido;
 
 int conta_linhas_com_palavra(const char *filepath, const char *keyword);
 
