@@ -14,24 +14,31 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Uso: %s <document_folder> <cache_size>\n", argv[0]);
         return 1;
     }
+
+    // Criar FIFO se não existir
     mkfifo(REQUEST_PIPE, 0666);
     printf("Servidor iniciado. À escuta de pedidos...\n");
 
-    int fd_request = open(REQUEST_PIPE, O_RDONLY, O_WRONLY);
+    // Abrir o FIFO de pedidos apenas para leitura
+    int fd_request = open(REQUEST_PIPE, O_RDONLY);
     if (fd_request == -1) {
         perror("Erro ao abrir pipe de pedido");
         return 1;
     }
 
-    Pedido pedido;
+    // Inicializar cache
     int cache_size = atoi(argv[2]);
-    cache_init(cache_size);
-
-    // Load the index file into the cache
-    if (index_load_file_to_cache() != 0) {
-        fprintf(stderr, "Failed to load index file into cache\n");
+    if (cache_init(cache_size) != 0) {
+        fprintf(stderr, "Falha ao inicializar cache\n");
+        return 1;
     }
 
+    // Carregar index para a cache
+    if (index_load_file_to_cache() != 0) {
+        fprintf(stderr, "Falha ao carregar ficheiro index para a cache\n");
+    }
+
+    Pedido pedido;
     int running = 1;
 
     while (running) {
@@ -42,18 +49,31 @@ int main(int argc, char *argv[]) {
 
         printf("Recebido pedido do cliente %d: operação '%c'\n", pedido.pid, pedido.operacao);
 
-        if (!handle_request(pedido, METADATA_FILE)) {
+        // Operações demoradas tratadas por filhos
+        if (pedido.operacao == 's' || pedido.operacao == 'l') {
+            pid_t pid = fork();
+            if (pid == -1) {
+                perror("Erro ao criar processo filho");
+                continue;
+            }
+
+            if (pid == 0) {
+                // Filho trata a operação e termina
+                handle_request(pedido, argv[1]);  // document_folder
+                exit(0);
+            }
+
+            // Pai continua
+            continue;
+        }
+
+        // Operações rápidas tratadas pelo pai
+        if (!handle_request(pedido, argv[1])) {
             running = 0;
         }
     }
 
     close(fd_request);
     unlink(REQUEST_PIPE);
-
     return 0;
 }
-
-
-// receber ver o que esta ver a operacao fazer e enviar para o cliente add remove e consulte tudo feito pelo pai 
-// s e l depois de saber que sao essas operacoes crio um filho que fica responsavel para usar outros filhos 
-// para fazer esses pesquisas e enviar resposta 

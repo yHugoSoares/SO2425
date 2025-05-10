@@ -11,87 +11,10 @@
 #include "index.h"
 
 #define MAX_PROCESS 10
-Metadata metadata;
 extern Cache *global_cache;
 
-void get_from_cache_to_metadata() {
-    if (!global_cache) {
-        fprintf(stderr, "Cache not initialized\n");
-        return;
-    }
-
-    // Reset metadata
-    metadata.count = 0;
-
-    // Iterate through all cache pages
-    for (int i = 0; i < global_cache->count; i++) {
-        CachePage *page = global_cache->pages[i];
-        if (!page || !page->entry) {
-            continue;
-        }
-
-        // Populate metadata with cache entry
-        Document *doc = &metadata.docs[metadata.count++];
-        doc->id = page->key;
-        strncpy(doc->title, page->entry->Title, sizeof(doc->title) - 1);
-        doc->title[sizeof(doc->title) - 1] = '\0';
-        strncpy(doc->authors, page->entry->authors, sizeof(doc->authors) - 1);
-        doc->authors[sizeof(doc->authors) - 1] = '\0';
-        strncpy(doc->year, page->entry->year, sizeof(doc->year) - 1);
-        doc->year[sizeof(doc->year) - 1] = '\0';
-        strncpy(doc->path, page->entry->path, sizeof(doc->path) - 1);
-        doc->path[sizeof(doc->path) - 1] = '\0';
-
-        // Ensure metadata does not exceed its maximum capacity
-        if (metadata.count >= MAX_DOCS) {
-            fprintf(stderr, "Metadata capacity reached. Some entries may not be transferred from cache.\n");
-            break;
-        }
-    }
-}
-
-// Saves the metadata to a file
-void save_metadata() {
-    int fd = open(METADATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0666); // Use O_APPEND instead of O_TRUNC
-    if (fd == -1) {
-        perror("save_metadata");
-        return;
-    }
-
-    get_from_cache_to_metadata();
-
-    // Write only the valid entries in the metadata
-    ssize_t written = write(fd, metadata.docs, metadata.count * sizeof(Document));
-    if (written != metadata.count * sizeof(Document)) {
-        perror("Error writing metadata");
-    }
-
-    close(fd);
-}
-
-void load_metadata() {
-    int fd = open(METADATA_FILE, O_RDONLY);
-    if (fd == -1) {
-        metadata.count = 0;
-        metadata.last_id = 0;
-        return;
-    }
-
-    // Read the file into the docs array
-    ssize_t bytes_read = read(fd, metadata.docs, MAX_DOCS * sizeof(Document));
-    if (bytes_read < 0) {
-        perror("Error reading metadata");
-        metadata.count = 0;
-    } else {
-        // Calculate the number of valid entries
-        metadata.count = bytes_read / sizeof(Document);
-    }
-
-    close(fd);
-}
-
 int handle_shutdown(Pedido pedido) {
-    char resposta[] = "Servidor a terminar...";
+    char resposta[] = "Server is shuting down...";
 
     char fifo_resposta[MAX_FIFO_NAME];
     snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
@@ -119,7 +42,7 @@ int handle_add(Pedido pedido) {
         snprintf(resposta, sizeof(resposta), "Erro: falha ao adicionar entrada ao cache.");
         destroy_index_entry(entry);
     } else {
-        snprintf(resposta, sizeof(resposta), "Documento indexado com sucesso.");
+        snprintf(resposta, sizeof(resposta), "Document %d indexed." , pedido.key);
     }
 
     // Send response to client
@@ -138,23 +61,14 @@ int handle_add(Pedido pedido) {
 
 int handle_consulta(Pedido pedido) {
     char resposta[512];
-    int found = 0;
+    IndexEntry *entry = cache_get_entry(pedido.key);
 
-    for (int i = 0; i < metadata.count; i++) {
-        if (metadata.docs[i].id == pedido.key) {
-            snprintf(resposta, sizeof(resposta),
-                     "Title: %s\nAuthors: %s\nYear: %s\nPath: %s",
-                     metadata.docs[i].title,
-                     metadata.docs[i].authors,
-                     metadata.docs[i].year,
-                     metadata.docs[i].path);
-            found = 1;
-            break;
-        }
-    }
-
-    if (!found) {
-        snprintf(resposta, sizeof(resposta), "Documento com ID %d não encontrado.", pedido.key);
+    if (!entry || entry->delete_flag) {
+        snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
+    } else {
+        snprintf(resposta, sizeof(resposta),
+                 "Title: %s\nAuthors: %s\nYear: %s\nPath: %s",
+                 entry->Title, entry->authors, entry->year, entry->path);
     }
 
     char fifo_resposta[MAX_FIFO_NAME];
@@ -172,24 +86,11 @@ int handle_consulta(Pedido pedido) {
 
 int handle_remove(Pedido pedido) {
     char resposta[256];
-    int found = 0;
-
-    for (int i = 0; i < metadata.count; i++) {
-        if (metadata.docs[i].id == pedido.key) {
-            for (int j = i; j < metadata.count - 1; j++) {
-                metadata.docs[j] = metadata.docs[j + 1];
-            }
-            metadata.count--;
-            save_metadata();
-            found = 1;
-            break;
-        }
-    }
-
-    if (found) {
-        snprintf(resposta, sizeof(resposta), "Document %d removed.", pedido.key);
+    
+    if (cache_delete_entry(pedido.key) == 0) {
+        snprintf(resposta, sizeof(resposta), "Index entry %d deleted.", pedido.key);
     } else {
-        snprintf(resposta, sizeof(resposta), "Document %d not found", pedido.key);
+        snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
     }
 
     char fifo_resposta[MAX_FIFO_NAME];
@@ -329,7 +230,7 @@ int handle_request(Pedido pedido, const char *document_folder) {
         case 's':
             return handle_search(pedido, document_folder); // por fazer os testes e comprovar devido a não conseguir anexar os ficheiros
         default:
-            fprintf(stderr, "Operação desconhecida.");
+            fprintf(stderr, "Unknown operation.");
             return 1;
     }
 }

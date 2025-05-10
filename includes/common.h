@@ -24,19 +24,6 @@
 #define FIFO_CLIENT "tmp/client_fifo"
 #define METADATA_FILE "metadata.dat"
 
-typedef struct {
-    int id;
-    char title[200];
-    char authors[200];
-    char year[5];
-    char path[64];
-} Document;
-
-typedef struct {
-    Document docs[MAX_DOCS];
-    int count;
-    int last_id;
-} Metadata;
 
 typedef struct {
     pid_t pid;
