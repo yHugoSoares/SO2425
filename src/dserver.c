@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <stdio.h>
-#include "cache.h"
+
 #include "handle_request.h"
 #include "common.h"
 
@@ -14,10 +14,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Uso: %s <document_folder> <cache_size>\n", argv[0]);
         return 1;
     }
-    mkfifo(REQUEST_PIPE, 0666);
+    mkfifo(PIPE, 0666);
     printf("Servidor iniciado. À escuta de pedidos...\n");
 
-    int fd_request = open(REQUEST_PIPE, O_RDONLY, O_WRONLY);
+    int fd_request = open(PIPE, O_RDONLY, O_WRONLY);
     if (fd_request == -1) {
         perror("Erro ao abrir pipe de pedido");
         return 1;
@@ -27,10 +27,10 @@ int main(int argc, char *argv[]) {
     int cache_size = atoi(argv[2]);
     cache_init(cache_size);
 
-    // Load the index file into the cache
-    if (index_load_file_to_cache() != 0) {
-        fprintf(stderr, "Failed to load index file into cache\n");
-    }
+    // // Load the index file into the cache
+    // if (index_load_file_to_cache() != 0) {
+    //     fprintf(stderr, "Failed to load index file into cache\n");
+    // }
 
     int running = 1;
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     }
 
     close(fd_request);
-    unlink(REQUEST_PIPE);
+    unlink(PIPE);
 
     return 0;
 }

@@ -1,56 +1,43 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include "cache.h"
 
-#define MAX_FIFO_NAME 64
-#define MAX_DOCS 1000
 #define MAX_TITLE_SIZE 190
 #define MAX_AUTHOR_SIZE 190
 #define MAX_YEAR_SIZE 5
 #define MAX_PATH_SIZE 64
-#define MAX_KEYWORD_SIZE 32
-#define MAX_PROCESS 10
+#define MAX_KEYWORD_SIZE 100
+#define MAX_ENTRIES 256
+#define MAX_FIFO_NAME 128
 
+#define METADATA_FILE "/metadata.dat"
+#define PIPE "/tmp/pipe"
 
-#define REQUEST_PIPE "tmp/request_pipe"
-#define FIFO_SERVER "tmp/server_fifo"
-#define FIFO_CLIENT "tmp/client_fifo"
-#define METADATA_FILE "metadata.dat"
 
 typedef struct {
-    int id;
-    char title[200];
-    char authors[200];
-    char year[5];
-    char path[64];
-} Document;
-
-typedef struct {
-    Document docs[MAX_DOCS];
-    int count;
-    int last_id;
-} Metadata;
-
-typedef struct {
-    pid_t pid;
-    char operacao;
-    char title[MAX_TITLE_SIZE];
-    char authors[MAX_AUTHOR_SIZE];
-    char year[MAX_YEAR_SIZE];
-    char path[MAX_PATH_SIZE];
-    int key;
-    int lines;
-    char keyword[MAX_KEYWORD_SIZE];
-    int n_procs;
+    int pid; // PID do cliente
+    int dirty; // Flag para indicar se o cache está sujo
+    char operacao; // Operação a realizar
+    int key; // Chave do documento
+    char keyword[100]; // Palavra-chave para pesquisa
+    char n_procs; // Número de processos para pesquisa
+    char title[MAX_TITLE_SIZE]; // Título do documento
+    char authors[MAX_AUTHOR_SIZE]; // Autores do documento
+    char year[MAX_YEAR_SIZE]; // Ano do documento
+    char path[MAX_PATH_SIZE]; // Caminho do documento
 } Pedido;
 
+typedef struct {
+    Entry entry[MAX_ENTRIES] ; // Array de entradas
+    int count; // Contador de documentos
+    int dirty; // Flag para indicar se o índice está sujo
+    int last_id; // Último ID usado
+} Metadata;
+
+
+void save_metadata(Metadata metadata);
+void load_metadata(Metadata metadata);
 int conta_linhas_com_palavra(const char *filepath, const char *keyword);
 
-#endif
+#endif // COMMON_H

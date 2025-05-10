@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+
 #include "common.h"
 
 int main(int argc, char *argv[]) {
@@ -39,7 +40,7 @@ int main(int argc, char *argv[]) {
             
             strncpy(pedido.path, argv[5], MAX_PATH_SIZE - 1);
             pedido.path[MAX_PATH_SIZE - 1] = '\0';
-                        break;
+            break;
 
         case 'c': // Listar documentos
             if (argc != 3) {
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Uso: %s -s <keyword> <nr_processos>\n", argv[0]);
                 return 1;
             }
-            strncpy(pedido.keyword, argv[2], MAX_KEYWORD_SIZE - 1);
+            strcpy(pedido.keyword, argv[2]);
             pedido.keyword[MAX_KEYWORD_SIZE - 1] = '\0';
             pedido.n_procs = atoi(argv[3]);
             
@@ -84,7 +85,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Abrir FIFO de pedido (comunicação com servidor)
-    int fd_request = open(REQUEST_PIPE, O_WRONLY);
+    int fd_request = open(PIPE, O_WRONLY);
     if (fd_request == -1) {
         perror("Erro ao abrir pipe de pedido");
         return 1;
@@ -92,7 +93,7 @@ int main(int argc, char *argv[]) {
 
     // Criar FIFO de resposta após abrir request
     char fifo_resposta[64];
-    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pid);
+    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/pipe_%d", pid);
     mkfifo(fifo_resposta, 0666);
 
     // Enviar pedido
