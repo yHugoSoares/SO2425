@@ -165,7 +165,7 @@ int handle_search(Pedido pedido, const char *document_folder) {
         if (pid == 0) {
             // Child process
             char file[256];
-            snprintf(file, sizeof(file), "%s", entry->path);
+            snprintf(file, sizeof(file), "%s", entry->path); 
 
             // Execute grep to search for the keyword in the file
             execlp("grep", "grep", "-q", pedido.keyword, file, NULL);
