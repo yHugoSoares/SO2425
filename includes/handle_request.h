@@ -12,8 +12,8 @@
 #include "common.h"
 
 // Global variables
-extern Metadata metadata;
-extern char *document_folder;
+#define MAX_PROCESS 10
+extern Cache *global_cache;
 
 // Function declarations
 void save_metadata();

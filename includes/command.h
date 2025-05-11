@@ -18,7 +18,7 @@
 #include "cache.h"
 
 int add_metadata(char *title, char *authors, char *year, char *path, int cache_flag);
-IndexEntry consult_metadata(int key, int cache_flag);
+Entry consult_metadata(int key, int cache_flag);
 int delete_metadata(int key, int cache_flag);
 
 #endif // COMMAND_H

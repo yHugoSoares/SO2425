@@ -14,8 +14,8 @@ int index_get_next_key() {
     return Next_key++;
 }
 
-IndexEntry *create_index_entry(char *title, char *authors, char *year, char *path, int delete_flag) {
-    IndexEntry *entry = malloc(sizeof(struct index_entry));
+Entry *create_index_entry(char *title, char *authors, char *year, char *path, int delete_flag) {
+    Entry *entry = malloc(sizeof(struct index_entry));
     if (entry == NULL) {
         perror("Failed to allocate memory for index entry");
         return NULL;
@@ -28,7 +28,7 @@ IndexEntry *create_index_entry(char *title, char *authors, char *year, char *pat
     return entry;
 }
 
-int destroy_index_entry(IndexEntry *entry) {
+int destroy_index_entry(Entry *entry) {
     if (entry == NULL) {
         return -1;
     }
@@ -45,9 +45,9 @@ int index_load_file_to_cache() {
     }
 
     // Read entries from the file
-    IndexEntry entry;
+    Entry entry;
     int key = 0;
-    while (read(index_fd, &entry, sizeof(IndexEntry)) == sizeof(IndexEntry)) {
+    while (read(index_fd, &entry, sizeof(Entry)) == sizeof(Entry)) {
         // Skip deleted entries
         if (entry.delete_flag) {
             key++;
@@ -55,13 +55,13 @@ int index_load_file_to_cache() {
         }
 
         // Allocate memory for the entry
-        IndexEntry *entry_copy = malloc(sizeof(IndexEntry));
+        Entry *entry_copy = malloc(sizeof(Entry));
         if (!entry_copy) {
             perror("Failed to allocate memory for index entry");
             close(index_fd);
             return -1;
         }
-        memcpy(entry_copy, &entry, sizeof(IndexEntry));
+        memcpy(entry_copy, &entry, sizeof(Entry));
 
         // Add the entry to the cache
         if (cache_add_entry(key, entry_copy, 0) != 0) {
@@ -79,7 +79,7 @@ int index_load_file_to_cache() {
     return 0;
 }
 
-int index_add_entry(IndexEntry *entry) {
+int index_add_entry(Entry *entry) {
     // Open the index file for writing
     int index_fd = open(INDEX_FILE, O_APPEND | O_CREAT | O_WRONLY, 0600);
     if (index_fd == -1) {
@@ -100,7 +100,7 @@ int index_add_entry(IndexEntry *entry) {
     return Next_key++;
 }
 
-int index_write_dirty_entry(IndexEntry *entry, int key) {
+int index_write_dirty_entry(Entry *entry, int key) {
     // Open the index file for reading and writing
     int index_fd = open(INDEX_FILE, O_RDWR | O_CREAT, 0600);
     if (index_fd == -1) {
@@ -127,7 +127,7 @@ int index_write_dirty_entry(IndexEntry *entry, int key) {
     return 0;
 }
 
-IndexEntry *index_get_entry(int key) {
+Entry *index_get_entry(int key) {
 
     // Check if key is valid
     if (key < 0 || key >= Next_key) {
@@ -150,7 +150,7 @@ IndexEntry *index_get_entry(int key) {
     }
 
     // Read the entry from the file
-    IndexEntry *entry = malloc(sizeof(struct index_entry));
+    Entry *entry = malloc(sizeof(struct index_entry));
     if (entry == NULL) {
         perror("Failed to allocate memory for index entry");
         close(index_fd);
@@ -175,7 +175,7 @@ IndexEntry *index_get_entry(int key) {
 int index_delete_entry(int key){
 
     // Get the index entry
-    IndexEntry *entry = index_get_entry(key);
+    Entry *entry = index_get_entry(key);
 
     // Check if the entry was found
     if (entry == NULL) {

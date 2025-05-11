@@ -8,7 +8,7 @@
 typedef struct cache_page {
     int dirty;
     int key;
-    IndexEntry *entry;
+    Entry *entry;
 } CachePage;
 
 typedef struct cache {
@@ -21,11 +21,12 @@ typedef struct cache {
 } Cache;
 
 int cache_init(int cache_size);
+int cache_load_from_file(const char *filename);
 int cache_load_metadata();
-int cache_add_entry(int key, IndexEntry *entry, int dirty);
-int cache_add_new_entry(IndexEntry *entry);
-int cache_add_index_entry(IndexEntry *entry, int key);
-IndexEntry *cache_get_entry(int key);
+int cache_add_entry(int key, Entry *entry, int dirty);
+int cache_add_new_entry(Entry *entry);
+int cache_add_index_entry(Entry *entry, int key);
+Entry *cache_get_entry(int key);
 int cache_delete_entry(int key);
 int cache_remove_entry(int key);
 

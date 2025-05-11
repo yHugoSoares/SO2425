@@ -48,6 +48,48 @@ int cache_init(int cache_size) {
     return 0;
 }
 
+// Load from file to cache
+int cache_load_from_file(const char *filename) {
+    if (!global_cache) {
+        fprintf(stderr, "Cache not initialized\n");
+        return -1;
+    }
+
+    // Open the file for reading
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        perror("Failed to open file for reading");
+        return -1;
+    }
+
+    // Read entries from the file and add them to the cache
+    Entry entry;
+    while (fread(&entry, sizeof(Entry), 1, file) == 1) {
+        // Skip deleted entries
+        if (entry.delete_flag) {
+            continue;
+        }
+
+        // Allocate memory for the entry
+        Entry *entry_copy = malloc(sizeof(Entry));
+        if (!entry_copy) {
+            perror("Failed to allocate memory for entry");
+            fclose(file);
+            return -1;
+        }
+        memcpy(entry_copy, &entry, sizeof(Entry));
+
+        // Add the entry to the cache
+        if (cache_add_entry(global_cache->count, entry_copy, 0) != 0) {
+            fprintf(stderr, "Failed to add entry to cache\n");
+            free(entry_copy);
+        }
+    }
+
+    fclose(file);
+    return 0;
+}
+
 // Destroy a cache page
 void cache_page_destroy(CachePage *page) {
     if (!page) return;
@@ -81,7 +123,7 @@ int cache_evict_entry() {
         perror("Failed to open metadata file for eviction");
         return -1;
     }
-    fwrite(page->entry, sizeof(IndexEntry), 1, file);
+    fwrite(page->entry, sizeof(Entry), 1, file);
     fclose(file);
 
     // Remove from hash table
@@ -95,8 +137,43 @@ int cache_evict_entry() {
     return 0;
 }
 
+int cache_delete_entry(int key) {
+    if (!global_cache) {
+        fprintf(stderr, "Cache not initialized\n");
+        return -1;
+    }
+
+    // Find the page in the hash table
+    CachePage *page = g_hash_table_lookup(global_cache->hash_table, &key);
+    if (!page) {
+        fprintf(stderr, "Entry with key %d not found in cache\n", key);
+        return -1;
+    }
+
+    // Remove the page from the hash table
+    g_hash_table_remove(global_cache->hash_table, &key);
+
+    // Find and remove the page from the pages array
+    for (int i = 0; i < global_cache->count; i++) {
+        if (global_cache->pages[i] == page) {
+            // Shift the remaining pages to fill the gap
+            for (int j = i; j < global_cache->count - 1; j++) {
+                global_cache->pages[j] = global_cache->pages[j + 1];
+            }
+            global_cache->pages[--global_cache->count] = NULL;
+            break;
+        }
+    }
+
+    // Destroy the cache page
+    cache_page_destroy(page);
+
+    return 0;
+}
+
+
 // Add entry to cache
-int cache_add_entry(int key, IndexEntry *entry, int dirty) {
+int cache_add_entry(int key, Entry *entry, int dirty) {
     if (!global_cache) {
         fprintf(stderr, "Cache not initialized\n");
         return -1;
@@ -128,6 +205,14 @@ int cache_add_entry(int key, IndexEntry *entry, int dirty) {
     return 0;
 }
 
+// Get entry from index (cache)
+Entry *cache_get_entry(int index) {
+    if (!global_cache || index < 0 || index >= global_cache->count) {
+        return NULL;
+    }
+    return global_cache->pages[index]->entry;
+}
+
 // Load metadata from metadata.dat into cache
 int cache_load_metadata() {
     if (!global_cache) {
@@ -143,15 +228,15 @@ int cache_load_metadata() {
     }
 
     // Read metadata entries and add them to the cache
-    IndexEntry entry;
-    while (fread(&entry, sizeof(IndexEntry), 1, file) == 1) {
-        IndexEntry *entry_copy = malloc(sizeof(IndexEntry));
+    Entry entry;
+    while (fread(&entry, sizeof(Entry), 1, file) == 1) {
+        Entry *entry_copy = malloc(sizeof(Entry));
         if (!entry_copy) {
             perror("Failed to allocate memory for metadata entry");
             fclose(file);
             return -1;
         }
-        memcpy(entry_copy, &entry, sizeof(IndexEntry));
+        memcpy(entry_copy, &entry, sizeof(Entry));
         cache_add_entry(entry_copy->delete_flag, entry_copy, 0);
     }
 

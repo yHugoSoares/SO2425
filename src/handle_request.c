@@ -26,7 +26,7 @@ int handle_shutdown(Pedido pedido) {
     } else {
         perror("Erro ao abrir FIFO de resposta");
     }
-    save_metadata();
+    
 
     return 0;  
 }
@@ -35,7 +35,7 @@ int handle_add(Pedido pedido) {
     char resposta[256];
 
     // Create a new metadata entry
-    IndexEntry *entry = create_index_entry(pedido.title, pedido.authors, pedido.year, pedido.path, 0);
+    Entry *entry = create_index_entry(pedido.title, pedido.authors, pedido.year, pedido.path, 0);
     if (!entry) {
         snprintf(resposta, sizeof(resposta), "Erro: falha ao criar entrada de metadados.");
     } else if (cache_add_entry(index_get_next_key(), entry, 1) != 0) {
@@ -61,7 +61,7 @@ int handle_add(Pedido pedido) {
 
 int handle_consulta(Pedido pedido) {
     char resposta[512];
-    IndexEntry *entry = cache_get_entry(pedido.key);
+    Entry *entry = cache_get_entry(pedido.key);
 
     if (!entry || entry->delete_flag) {
         snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
@@ -106,37 +106,33 @@ int handle_remove(Pedido pedido) {
     return 1;
 }
 
-
-int handle_lines_number(Pedido pedido, const char *document_folder){
+int handle_lines_number(Pedido pedido, const char *document_folder) {
     char resposta[256];
-    //int lines_number = 0;
-    int found = 0;// função para retornar o numero de linhas que contêm uma dada palavra
-    for (int i = 0; i< metadata.count;i++){
-        int resp;
-        if(metadata.docs[i].id== pedido.key){
-            if (metadata.docs[i].path[0] != '\0'){
-                resp= conta_linhas_com_palavra(metadata.docs[i].path,pedido.keyword);
-                found=1;
-            }
-        }
-        if (found == 0){
-            snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
-        }
-        else{
-            snprintf(resposta, sizeof(resposta), "Document %d found in %d lines.", pedido.key, resp);
-        }
-        break;
+    int found = 0;
+
+    // Retrieve the entry from the cache
+    Entry *entry = cache_get_entry(pedido.key);
+    if (entry && entry->path[0] != '\0') {
+        int resp = conta_linhas_com_palavra(entry->path, pedido.keyword);
+        snprintf(resposta, sizeof(resposta), "Document %d found in %d lines.", pedido.key, resp);
+        found = 1;
     }
+
+    if (!found) {
+        snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
+    }
+
+    // Send response to client
     char fifo_resposta[MAX_FIFO_NAME];
-    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d",pedido.pid);
+    snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
     int fd_resp = open(fifo_resposta, O_WRONLY);
     if (fd_resp != -1) {
         write(fd_resp, resposta, strlen(resposta) + 1);
         close(fd_resp);
-    } 
-    else {
+    } else {
         perror("Erro ao abrir FIFO de resposta");
     }
+
     return 1;
 }
 
@@ -146,7 +142,13 @@ int handle_search(Pedido pedido, const char *document_folder) {
     int found = 0;
     int active_processes = 0;
 
-    for (int i = 0; i < metadata.count; i++) {
+    // Iterate over all cache entries
+    for (int i = 0; i < global_cache->size; i++) {
+        Entry *entry = cache_get_entry(i);
+        if (!entry || entry->delete_flag) {
+            continue;
+        }
+
         // Limit the number of active child processes to pedido.n_procs
         if (active_processes >= pedido.n_procs) {
             int status;
@@ -163,7 +165,7 @@ int handle_search(Pedido pedido, const char *document_folder) {
         if (pid == 0) {
             // Child process
             char file[256];
-            snprintf(file, sizeof(file), "%s/%s", document_folder, metadata.docs[i].path);
+            snprintf(file, sizeof(file), "%s/%s", document_folder, entry->path);
 
             // Execute grep to search for the keyword in the file
             execlp("grep", "grep", "-q", pedido.keyword, file, NULL);
@@ -182,7 +184,7 @@ int handle_search(Pedido pedido, const char *document_folder) {
             if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
                 // If grep found the keyword, add the file path to the response
                 found++;
-                strncat(resposta, metadata.docs[i].path, sizeof(resposta) - strlen(resposta) - 2);
+                strncat(resposta, entry->path, sizeof(resposta) - strlen(resposta) - 2);
                 strncat(resposta, "\n", sizeof(resposta) - strlen(resposta) - 1);
             }
         }
@@ -216,6 +218,8 @@ int handle_search(Pedido pedido, const char *document_folder) {
 
 
 int handle_request(Pedido pedido, const char *document_folder) {
+    cache_load_from_file(METADATA_FILE);
+    
     switch (pedido.operacao) {
         case 'f':
             return handle_shutdown(pedido);
