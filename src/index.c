@@ -15,7 +15,7 @@ int index_get_next_key() {
 }
 
 Entry *create_index_entry(char *title, char *authors, char *year, char *path, int delete_flag) {
-    Entry *entry = malloc(sizeof(struct index_entry));
+    Entry *entry = malloc(sizeof(Entry));
     if (entry == NULL) {
         perror("Failed to allocate memory for index entry");
         return NULL;
@@ -37,24 +37,32 @@ int destroy_index_entry(Entry *entry) {
 }
 
 int index_load_file_to_cache() {
-    // Open the index file for reading
     int index_fd = open(INDEX_FILE, O_RDONLY);
     if (index_fd == -1) {
         perror("Failed to open index file");
+        Next_key = 0;  // arquivo não existe ou vazio => começa do 0
         return -1;
     }
 
-    // Read entries from the file
+    off_t file_size = lseek(index_fd, 0, SEEK_END);
+    if (file_size == -1) {
+        perror("lseek");
+        close(index_fd);
+        return -1;
+    }
+    
+    Next_key = file_size / sizeof(Entry);  // tamanho / tamanho de cada entrada
+
+    lseek(index_fd, 0, SEEK_SET);  // volta ao início do ficheiro
+
     Entry entry;
     int key = 0;
     while (read(index_fd, &entry, sizeof(Entry)) == sizeof(Entry)) {
-        // Skip deleted entries
         if (entry.delete_flag) {
             key++;
             continue;
         }
 
-        // Allocate memory for the entry
         Entry *entry_copy = malloc(sizeof(Entry));
         if (!entry_copy) {
             perror("Failed to allocate memory for index entry");
@@ -63,7 +71,6 @@ int index_load_file_to_cache() {
         }
         memcpy(entry_copy, &entry, sizeof(Entry));
 
-        // Add the entry to the cache
         if (cache_add_entry(key, entry_copy, 0) != 0) {
             fprintf(stderr, "Failed to add entry with key %d to cache\n", key);
             free(entry_copy);
@@ -71,9 +78,6 @@ int index_load_file_to_cache() {
 
         key++;
     }
-
-    // Update the Next_key variable
-    Next_key = key;
 
     close(index_fd);
     return 0;
@@ -88,7 +92,7 @@ int index_add_entry(Entry *entry) {
     }
 
     // Write the entry to the file
-    if (write(index_fd, entry, sizeof(struct index_entry)) <= 0) {
+    if (write(index_fd, entry, sizeof( Entry)) <= 0) {
         perror("Failed to write index entry to file");
         close(index_fd);
         return -1;
@@ -101,6 +105,10 @@ int index_add_entry(Entry *entry) {
 }
 
 int index_write_dirty_entry(Entry *entry, int key) {
+    if (!entry) {
+        fprintf(stderr, "Erro: entrada nula passada para index_write_dirty_entry\n");
+        return -1;
+    }
     // Open the index file for reading and writing
     int index_fd = open(INDEX_FILE, O_RDWR | O_CREAT, 0600);
     if (index_fd == -1) {
@@ -109,7 +117,7 @@ int index_write_dirty_entry(Entry *entry, int key) {
     }
 
     // Calculate the offset for the entry
-    off_t offset = key * sizeof(struct index_entry);
+    off_t offset = key * sizeof( Entry);
     if (lseek(index_fd, offset, SEEK_SET) == -1) {
         perror("Failed to seek to index entry");
         close(index_fd);
@@ -117,7 +125,7 @@ int index_write_dirty_entry(Entry *entry, int key) {
     }
 
     // Write the entry to the file
-    if (write(index_fd, entry, sizeof(struct index_entry)) <= 0) {
+    if (write(index_fd, entry, sizeof( Entry)) <= 0) {
         perror("Failed to write index entry to file");
         close(index_fd);
         return -1;
@@ -142,7 +150,7 @@ Entry *index_get_entry(int key) {
     }
 
     // Calculate the offset for the entry
-    off_t offset = key * sizeof(struct index_entry);
+    off_t offset = key * sizeof( Entry);
     if (lseek(index_fd, offset, SEEK_SET) == -1) {
         perror("Failed to seek to index entry");
         close(index_fd);
@@ -150,14 +158,14 @@ Entry *index_get_entry(int key) {
     }
 
     // Read the entry from the file
-    Entry *entry = malloc(sizeof(struct index_entry));
+    Entry *entry = malloc(sizeof( Entry));
     if (entry == NULL) {
         perror("Failed to allocate memory for index entry");
         close(index_fd);
         return NULL;
     }
 
-    ssize_t bytesRead = read(index_fd, entry, sizeof(struct index_entry));
+    ssize_t bytesRead = read(index_fd, entry, sizeof( Entry));
 
     if (bytesRead == 0) {
         free(entry);
@@ -200,7 +208,7 @@ int index_delete_entry(int key){
     }
 
     // Calculate the offset for the entry
-    off_t offset = key * sizeof(struct index_entry);
+    off_t offset = key * sizeof(Entry );
     if (lseek(index_fd, offset, SEEK_SET) == -1) {
         perror("Failed to seek to index entry");
         free(entry);
@@ -209,7 +217,7 @@ int index_delete_entry(int key){
     }
 
     // Write the updated entry back to the file
-    if (write(index_fd, entry, sizeof(struct index_entry)) <= 0) {
+    if (write(index_fd, entry, sizeof(Entry )) <= 0) {
         perror("Failed to write index entry to file");
         free(entry);
         close(index_fd);

@@ -206,11 +206,18 @@ int cache_add_entry(int key, Entry *entry, int dirty) {
 }
 
 // Get entry from index (cache)
-Entry *cache_get_entry(int index) {
-    if (!global_cache || index < 0 || index >= global_cache->count) {
+Entry *cache_get_entry(int key) {
+    if (!global_cache) {
+        fprintf(stderr, "Cache not initialized\n");
         return NULL;
     }
-    return global_cache->pages[index]->entry;
+
+    CachePage *page = g_hash_table_lookup(global_cache->hash_table, &key);
+    if (page) {
+        return page->entry;
+    }
+
+    return NULL;
 }
 
 // Load metadata from metadata.dat into cache

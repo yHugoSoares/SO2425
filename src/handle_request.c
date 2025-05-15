@@ -33,18 +33,18 @@ int handle_shutdown(Pedido pedido) {
 
 int handle_add(Pedido pedido) {
     char resposta[256];
+    int key = index_get_next_key();
 
-    // Create a new metadata entry
     Entry *entry = create_index_entry(pedido.title, pedido.authors, pedido.year, pedido.path, 0);
     if (!entry) {
         snprintf(resposta, sizeof(resposta), "Erro: falha ao criar entrada de metadados.");
-    } else if (cache_add_entry(index_get_next_key(), entry, 1) != 0) {
+    } else if (cache_add_entry(key, entry, 1) != 0) {
         snprintf(resposta, sizeof(resposta), "Erro: falha ao adicionar entrada ao cache.");
         destroy_index_entry(entry);
     } else {
-        snprintf(resposta, sizeof(resposta), "Document %d indexed." , pedido.key);
+        pedido.key = key;  // atualizar pedido.key com a key usada
+        snprintf(resposta, sizeof(resposta), "Document %d indexed.", key);
     }
-
     // Send response to client
     char fifo_resposta[MAX_FIFO_NAME];
     snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
@@ -144,10 +144,10 @@ int handle_search(Pedido pedido, const char *document_folder) {
 
     // Iterate over all cache entries
     for (int i = 0; i < global_cache->size; i++) {
-        Entry *entry = cache_get_entry(i);
-        if (!entry || entry->delete_flag) {
-            continue;
-        }
+        Entry *entry = global_cache->pages[i]->entry;
+        if (!entry || entry->delete_flag) continue;
+        
+   //     int key = global_cache->pages[i]->key;
 
         // Limit the number of active child processes to pedido.n_procs
         if (active_processes >= pedido.n_procs) {
@@ -217,9 +217,7 @@ int handle_search(Pedido pedido, const char *document_folder) {
 }
 
 
-int handle_request(Pedido pedido, const char *document_folder) {
-    cache_load_from_file(METADATA_FILE);
-    
+int handle_request(Pedido pedido, const char *document_folder) {    
     switch (pedido.operacao) {
         case 'f':
             return handle_shutdown(pedido);
