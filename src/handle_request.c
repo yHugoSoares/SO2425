@@ -87,13 +87,23 @@ int handle_consulta(Pedido pedido) {
 
 int handle_remove(Pedido pedido) {
     char resposta[256];
-    
-    if (cache_delete_entry(pedido.key) == 0) {
-        snprintf(resposta, sizeof(resposta), "Index entry %d deleted.", pedido.key);
+
+    if (!global_cache) {
+        snprintf(resposta, sizeof(resposta), "Cache not initialized.");
     } else {
-        snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
+        // Buscar a página da cache pela key
+        CachePage *page = g_hash_table_lookup(global_cache->hash_table, &pedido.key);
+
+        if (!page || !page->entry || page->entry->delete_flag) {
+            snprintf(resposta, sizeof(resposta), "Document %d not found.", pedido.key);
+        } else {
+            page->entry->delete_flag = 1;
+            page->dirty = 1; // Marca a página como suja
+            snprintf(resposta, sizeof(resposta), "Document %d marked as deleted.", pedido.key);
+        }
     }
 
+    // Enviar resposta
     char fifo_resposta[MAX_FIFO_NAME];
     snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
     int fd_resp = open(fifo_resposta, O_WRONLY);
