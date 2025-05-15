@@ -19,9 +19,9 @@
 #define MAX_PROCESS 10
 
 
-#define REQUEST_PIPE "tmp/request_pipe"
-#define FIFO_SERVER "tmp/server_fifo"
-#define FIFO_CLIENT "tmp/client_fifo"
+#define REQUEST_PIPE "/tmp/request_pipe"  // Corrigido o caminho do FIFO
+#define FIFO_SERVER "/tmp/server_fifo"    // Corrigido o caminho do FIFO
+#define FIFO_CLIENT "/tmp/client_fifo"    // Corrigido o caminho do FIFO
 #define METADATA_FILE "metadata.dat"
 
 

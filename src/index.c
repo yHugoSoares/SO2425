@@ -7,6 +7,7 @@
 
 #include "index.h"
 #include "cache.h"
+#include "common.h"  // Adicionando a inclusão do common.h que contém a definição de METADATA_FILE
 
 int Next_key = 0;
 
@@ -37,62 +38,87 @@ int destroy_index_entry(Entry *entry) {
 }
 
 int index_load_file_to_cache() {
-    int index_fd = open(INDEX_FILE, O_RDONLY);
+    // Inicializa Next_key como 0 por padrão
+    Next_key = 0;
+    
+    // Verificar se o arquivo existe
+    int index_fd = open(METADATA_FILE, O_RDONLY);
     if (index_fd == -1) {
-        perror("Failed to open index file");
-        Next_key = 0;  // arquivo não existe ou vazio => começa do 0
-        return -1;
+        printf("Arquivo de metadados não encontrado. Iniciando com Next_key = 0\n");
+        return 0;  // Retorna sucesso, já que começar com Next_key = 0 é válido
     }
 
+    // Verifica se o arquivo está vazio
     off_t file_size = lseek(index_fd, 0, SEEK_END);
-    if (file_size == -1) {
-        perror("lseek");
+    if (file_size == 0) {
+        printf("Arquivo de metadados vazio. Iniciando com Next_key = 0\n");
         close(index_fd);
-        return -1;
+        return 0;  // Arquivo vazio, Next_key permanece 0
     }
     
-    Next_key = file_size / sizeof(Entry);  // tamanho / tamanho de cada entrada
-
-    lseek(index_fd, 0, SEEK_SET);  // volta ao início do ficheiro
+    printf("Carregando entradas do arquivo de metadados para a cache...\n");
+    
+    // Volta ao início do arquivo
+    lseek(index_fd, 0, SEEK_SET);
 
     Entry entry;
-    int key = 0;
+    int max_key = -1;  // Para rastrear o maior índice encontrado
+    int count = 0;
+    
+    // Lê todas as entradas do arquivo
     while (read(index_fd, &entry, sizeof(Entry)) == sizeof(Entry)) {
+        count++;
+        
+        // Pula entradas marcadas como excluídas
         if (entry.delete_flag) {
-            key++;
             continue;
         }
 
+        // Cria uma cópia da entrada para o cache
         Entry *entry_copy = malloc(sizeof(Entry));
         if (!entry_copy) {
             perror("Failed to allocate memory for index entry");
-            close(index_fd);
-            return -1;
+            continue;
         }
         memcpy(entry_copy, &entry, sizeof(Entry));
 
+        // Adiciona a entrada ao cache com o índice atual
+        int key = Next_key++;
         if (cache_add_entry(key, entry_copy, 0) != 0) {
             fprintf(stderr, "Failed to add entry with key %d to cache\n", key);
             free(entry_copy);
+        } else {
+            printf("Entrada carregada para a cache: key=%d, path=%s\n", key, entry_copy->path);
+            
+            // Atualiza o maior índice encontrado
+            if (key > max_key) {
+                max_key = key;
+            }
         }
-
-        key++;
     }
 
+    // Garante que Next_key seja pelo menos o maior índice + 1
+    if (Next_key <= max_key) {
+        Next_key = max_key + 1;
+    }
+    
+    printf("Carregadas %d entradas do arquivo de metadados\n", count);
+    printf("Next_key inicializado como %d\n", Next_key);
+    
     close(index_fd);
     return 0;
 }
 
 int index_add_entry(Entry *entry) {
     // Open the index file for writing
-    int index_fd = open(INDEX_FILE, O_APPEND | O_CREAT | O_WRONLY, 0600);
+    int index_fd = open(METADATA_FILE, O_APPEND | O_CREAT | O_WRONLY, 0600);
     if (index_fd == -1) {
         perror("Failed to open index file");
         return -1;
     }
 
     // Write the entry to the file
-    if (write(index_fd, entry, sizeof( Entry)) <= 0) {
+    if (write(index_fd, entry, sizeof(Entry)) <= 0) {
         perror("Failed to write index entry to file");
         close(index_fd);
         return -1;
@@ -110,14 +136,14 @@ int index_write_dirty_entry(Entry *entry, int key) {
         return -1;
     }
     // Open the index file for reading and writing
-    int index_fd = open(INDEX_FILE, O_RDWR | O_CREAT, 0600);
+    int index_fd = open(METADATA_FILE, O_RDWR | O_CREAT, 0600);
     if (index_fd == -1) {
         perror("Failed to open index file");
         return -1;
     }
 
     // Calculate the offset for the entry
-    off_t offset = key * sizeof( Entry);
+    off_t offset = key * sizeof(Entry);
     if (lseek(index_fd, offset, SEEK_SET) == -1) {
         perror("Failed to seek to index entry");
         close(index_fd);
@@ -125,7 +151,7 @@ int index_write_dirty_entry(Entry *entry, int key) {
     }
 
     // Write the entry to the file
-    if (write(index_fd, entry, sizeof( Entry)) <= 0) {
+    if (write(index_fd, entry, sizeof(Entry)) <= 0) {
         perror("Failed to write index entry to file");
         close(index_fd);
         return -1;
@@ -136,21 +162,20 @@ int index_write_dirty_entry(Entry *entry, int key) {
 }
 
 Entry *index_get_entry(int key) {
-
     // Check if key is valid
     if (key < 0 || key >= Next_key) {
         return NULL;
     }
 
     // Open the index file for reading
-    int index_fd = open(INDEX_FILE, O_RDONLY);
+    int index_fd = open(METADATA_FILE, O_RDONLY);
     if (index_fd == -1) {
         perror("Failed to open index file");
         return NULL;
     }
 
     // Calculate the offset for the entry
-    off_t offset = key * sizeof( Entry);
+    off_t offset = key * sizeof(Entry);
     if (lseek(index_fd, offset, SEEK_SET) == -1) {
         perror("Failed to seek to index entry");
         close(index_fd);
@@ -158,14 +183,14 @@ Entry *index_get_entry(int key) {
     }
 
     // Read the entry from the file
-    Entry *entry = malloc(sizeof( Entry));
+    Entry *entry = malloc(sizeof(Entry));
     if (entry == NULL) {
         perror("Failed to allocate memory for index entry");
         close(index_fd);
         return NULL;
     }
 
-    ssize_t bytesRead = read(index_fd, entry, sizeof( Entry));
+    ssize_t bytesRead = read(index_fd, entry, sizeof(Entry));
 
     if (bytesRead == 0) {
         free(entry);
@@ -180,8 +205,7 @@ Entry *index_get_entry(int key) {
     return entry;
 }
 
-int index_delete_entry(int key){
-
+int index_delete_entry(int key) {
     // Get the index entry
     Entry *entry = index_get_entry(key);
 
@@ -200,7 +224,7 @@ int index_delete_entry(int key){
     entry->delete_flag = 1;
 
     // Open the index file for writing
-    int index_fd = open(INDEX_FILE, O_WRONLY);
+    int index_fd = open(METADATA_FILE, O_WRONLY);
     if (index_fd == -1) {
         perror("Failed to open index file");
         free(entry);
@@ -208,7 +232,7 @@ int index_delete_entry(int key){
     }
 
     // Calculate the offset for the entry
-    off_t offset = key * sizeof(Entry );
+    off_t offset = key * sizeof(Entry);
     if (lseek(index_fd, offset, SEEK_SET) == -1) {
         perror("Failed to seek to index entry");
         free(entry);
@@ -217,7 +241,7 @@ int index_delete_entry(int key){
     }
 
     // Write the updated entry back to the file
-    if (write(index_fd, entry, sizeof(Entry )) <= 0) {
+    if (write(index_fd, entry, sizeof(Entry)) <= 0) {
         perror("Failed to write index entry to file");
         free(entry);
         close(index_fd);
@@ -228,143 +252,3 @@ int index_delete_entry(int key){
     close(index_fd);
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// int IndexGetKey(){
-//     //Verificar se o arquivo Index existe
-//     int IndexFile = open(INDEX_FILE, O_RDONLY | O_CREAT| O_APPEND, 0600);
-//     if(IndexFile == -1){
-//         //Erro ao abrir o arquivo
-//         perror("Erro ao abrir o arquivo de índice");
-//         return -1;
-//     }
-
-//     // -- Calcular Offset do documento -- //
-//     off_t offset = lseek(IndexFile, 0, SEEK_END);
-//     if (offset == -1) {
-//         perror("Erro ao obter o offset do documento");
-//         close(IndexFile);
-//         return -1;
-//     }
-
-//     close(IndexFile);
-//     return offset / sizeof(struct indexPackage); // Retorna a chave do próximo documento
-// }
-
-
-
-// int IndexAddManager(IndexPack argument,int key){
-
-//     //Verificar se o arquivo Index existe 
-//     int IndexFile = open(INDEX_FILE, O_WRONLY | O_CREAT, 0600); 
-    
-//     if(IndexFile == -1){
-//         //Erro ao abrir o arquivo
-//         perror("Erro ao abrir o arquivo de índice");
-//         return -1;
-//     }
-    
-//     // -- Calcular Offset do documento -- //
-//     off_t offset = key * sizeof(struct indexPackage);
-//     off_t offsetSeek = lseek(IndexFile, offset, SEEK_SET);
-//     if (offsetSeek == -1) {
-//         close(IndexFile);
-//         return -1;
-//     }
-
-
-//     size_t bytesWritten = write(IndexFile, argument, sizeof(struct indexPackage));
-
-//     if(bytesWritten == -1){
-//         //Erro ao escrever no arquivo
-//         perror("Erro ao escrever no arquivo de índice");
-//         return -1;
-//     }
-
-//     close(IndexFile);
-//     return key; // Escrita bem sucedida
-// }
-
-
-
-
-
-// IndexPack IndexConsultManager(int key){
-    
-//     //Verificar se o arquivo Index existe
-//     int IndexFile = open(INDEX_FILE, O_RDONLY , 0600);
-//     if(IndexFile == -1){
-//         //Erro ao abrir o arquivo
-//         perror("Erro ao abrir o arquivo de índice");
-//         return NULL;
-//     }
-
-//     // -- Calcular Offset do documento -- //
-//     off_t offset = key * sizeof(struct indexPackage);
-//     off_t offsetSeek = lseek(IndexFile, offset, SEEK_SET);
-//     if (offsetSeek == -1) {
-//         perror("Erro ao obter o offset do documento");
-//         close(IndexFile);
-//         return NULL;
-//     }
-
-//     void* pack = malloc(sizeof(struct indexPackage));
-//     if(pack == NULL) {
-//         perror("Failed to allocate memory for the pack");
-//     }
-//     ssize_t bytesRead = read(IndexFile, pack, sizeof(struct indexPackage));
-//     if(bytesRead == -1){
-//         //Erro ao ler o arquivo
-//         perror("Erro ao ler o arquivo de índice");
-//         free(pack);
-//         close(IndexFile);
-//         return NULL;
-//     }
-
-//     close(IndexFile);
-
-//     return (IndexPack) pack;
-// }
-
-
-// int IndexDeleteManager(int key,IndexPack BlankPackage){
-
-//     //Verificar se o arquivo Index existe
-//     int IndexFile = open(INDEX_FILE, O_WRONLY, 0600);
-//     if(IndexFile == -1){
-//         //Erro ao abrir o arquivo
-//         perror("Erro ao abrir o arquivo de índice");
-//         return -1;
-//     }
-
-//     // -- Calcular Offset do documento -- //
-//     off_t offset = key * sizeof(struct indexPackage);
-//     off_t offsetSeek = lseek(IndexFile, offset, SEEK_SET);
-//     if (offsetSeek == -1) {
-//         perror("Erro ao obter o offset do documento");
-//         close(IndexFile);
-//         return -1;
-//     }
-
-//     //Remover o documento
-//     if(write(IndexFile, BlankPackage, sizeof(struct indexPackage)) < 0) {
-//         perror("Failed to write empty block");
-//         return -1;
-//     }
-//     close(IndexFile);
-
-//     return 0;
-
-// }

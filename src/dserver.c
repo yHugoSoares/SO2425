@@ -15,8 +15,36 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Verificar se a pasta de documentos existe e criar se não existir
+    struct stat st;
+    if (stat(argv[1], &st) != 0) {
+        printf("Diretório '%s' não existe. Criando...\n", argv[1]);
+        // Tenta criar o diretório com permissões 0755 (rwxr-xr-x)
+        if (mkdir(argv[1], 0755) != 0) {
+            perror("Erro ao criar diretório");
+            return 1;
+        }
+        printf("Diretório '%s' criado com sucesso.\n", argv[1]);
+    } else if (!S_ISDIR(st.st_mode)) {
+        fprintf(stderr, "Erro: '%s' existe mas não é um diretório\n", argv[1]);
+        return 1;
+    }
+    
+    printf("Pasta de documentos: %s\n", argv[1]);
+    
+    // Listar alguns arquivos no diretório para verificar
+    printf("Verificando arquivos no diretório...\n");
+    char command[512];
+    snprintf(command, sizeof(command), "ls -la %s | head -5", argv[1]);
+    system(command);
+
     // Criar FIFO se não existir
-    mkfifo(REQUEST_PIPE, 0666);
+    unlink(REQUEST_PIPE); // Remove o FIFO se já existir
+    if (mkfifo(REQUEST_PIPE, 0666) != 0) {
+        perror("Erro ao criar FIFO");
+        return 1;
+    }
+    
     printf("Servidor iniciado. À escuta de pedidos...\n");
 
     // Abrir o FIFO de pedidos apenas para leitura
@@ -32,6 +60,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Falha ao inicializar cache\n");
         return 1;
     }
+    
+    printf("Cache inicializada com tamanho %d\n", cache_size);
 
     // Carregar index para a cache
     if (index_load_file_to_cache() != 0) {
@@ -48,6 +78,12 @@ int main(int argc, char *argv[]) {
         }
 
         printf("Recebido pedido do cliente %d: operação '%c'\n", pedido.pid, pedido.operacao);
+        
+        // Se for operação 'a', mostrar o caminho do arquivo
+        if (pedido.operacao == 'a') {
+            printf("Adicionando arquivo: %s\n", pedido.path);
+            printf("Caminho completo: %s/%s\n", argv[1], pedido.path);
+        }
 
         // Operações demoradas tratadas por filhos
         if (pedido.operacao == 's' || pedido.operacao == 'l') {
@@ -68,8 +104,14 @@ int main(int argc, char *argv[]) {
         }
 
         // Operações rápidas tratadas pelo pai
-        if (!handle_request(pedido, argv[1])) {
-            running = 0;
+        if (pedido.operacao == 'f') {
+            // Se for operação de finalização, salva a cache e termina
+            if (!handle_request(pedido, argv[1])) {
+                running = 0;
+            }
+        } else {
+            // Outras operações
+            handle_request(pedido, argv[1]);
         }
     }
 
