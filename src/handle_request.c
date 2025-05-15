@@ -33,7 +33,8 @@ int handle_shutdown(Pedido pedido) {
 
 int handle_add(Pedido pedido) {
     char resposta[256];
-    int key = index_get_next_key();
+
+    int key = index_get_next_key();  // ESTE é o valor real do ID atribuído
 
     Entry *entry = create_index_entry(pedido.title, pedido.authors, pedido.year, pedido.path, 0);
     if (!entry) {
@@ -42,10 +43,10 @@ int handle_add(Pedido pedido) {
         snprintf(resposta, sizeof(resposta), "Erro: falha ao adicionar entrada ao cache.");
         destroy_index_entry(entry);
     } else {
-        pedido.key = key;  // atualizar pedido.key com a key usada
-        snprintf(resposta, sizeof(resposta), "Document %d indexed.", key);
+        snprintf(resposta, sizeof(resposta), "Document %d indexed.", key);  
     }
-    // Send response to client
+
+    // Enviar resposta
     char fifo_resposta[MAX_FIFO_NAME];
     snprintf(fifo_resposta, sizeof(fifo_resposta), "/tmp/response_pipe_%d", pedido.pid);
     int fd_resp = open(fifo_resposta, O_WRONLY);
