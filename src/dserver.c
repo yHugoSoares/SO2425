@@ -15,18 +15,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Verificar se a pasta de documentos existe e criar se não existir
+    // Verificar se a pasta de documentos existe
     struct stat st;
-    if (stat(argv[1], &st) != 0) {
-        printf("Diretório '%s' não existe. Criando...\n", argv[1]);
-        // Tenta criar o diretório com permissões 0755 (rwxr-xr-x)
-        if (mkdir(argv[1], 0755) != 0) {
-            perror("Erro ao criar diretório");
-            return 1;
-        }
-        printf("Diretório '%s' criado com sucesso.\n", argv[1]);
-    } else if (!S_ISDIR(st.st_mode)) {
-        fprintf(stderr, "Erro: '%s' existe mas não é um diretório\n", argv[1]);
+    if (stat(argv[1], &st) != 0 || !S_ISDIR(st.st_mode)) {
+        fprintf(stderr, "Erro: '%s' não é um diretório válido ou não existe\n", argv[1]);
         return 1;
     }
     

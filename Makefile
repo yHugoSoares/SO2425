@@ -9,7 +9,7 @@ BUILD_DIR = build
 BIN_DIR = bin
 INCLUDE_DIR = includes
 TMP_DIR = tmp
-DATASET_DIR = Gdataset  # Usando apenas o diretório Gdataset que existe
+DATASET_DIR = Gdataset/Gdataset  # Caminho explícito para a pasta de documentos
 
 # Source files
 SRC_FILES = \
@@ -33,18 +33,7 @@ all: prepare $(CLIENT_EXEC) $(SERVER_EXEC)
 prepare:
 	@echo "[PREPARE] Creating build and bin directories."
 	@mkdir -p $(BUILD_DIR) $(BIN_DIR) $(TMP_DIR)
-	@echo "[PREPARE] Checking if dataset directory exists."
-	@if [ ! -d "$(DATASET_DIR)" ]; then \
-		echo "[WARNING] Dataset directory $(DATASET_DIR) does not exist!"; \
-		echo "[WARNING] Trying alternative paths..."; \
-		if [ -d "Gdataset" ]; then \
-			echo "[INFO] Using Gdataset directory."; \
-			DATASET_DIR="Gdataset"; \
-		else \
-			echo "[ERROR] Could not find a valid dataset directory!"; \
-			exit 1; \
-		fi; \
-	fi
+	@echo "[PREPARE] Using dataset directory: $(DATASET_DIR)"
 
 $(CLIENT_EXEC): $(BUILD_DIR)/dclient.o $(BUILD_DIR)/common.o
 	@mkdir -p $(BIN_DIR)
@@ -65,7 +54,7 @@ server: prepare $(SERVER_EXEC)
 # Comando para listar arquivos no diretório do dataset
 list-files:
 	@echo "[INFO] Listing files in dataset directory:"
-	@find $(DATASET_DIR) -type f | sort
+	@find $(DATASET_DIR) -type f | head -10
 
 clean:
 	@echo "[CLEAN] Cleaning build directory."
