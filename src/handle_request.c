@@ -73,7 +73,7 @@ int handle_shutdown(Pedido pedido) {
 }
 
 int handle_add(Pedido pedido) {
-    char resposta[256];
+    char resposta[512];
 
     int key = index_get_next_key();  // ESTE é o valor real do ID atribuído
     printf("Adicionando documento com key=%d, path=%s\n", key, pedido.path);
@@ -128,7 +128,7 @@ int handle_consulta(Pedido pedido) {
 }
 
 int handle_remove(Pedido pedido) {
-    char resposta[256];
+    char resposta[512];
 
     if (!global_cache) {
         snprintf(resposta, sizeof(resposta), "Cache not initialized.");
@@ -242,7 +242,7 @@ int handle_lines_number(Pedido pedido, const char *document_folder) {
 }
 
 int handle_search(Pedido pedido, const char *document_folder) {
-    char resposta[1024] = "";  // Increased buffer size for multiple file paths
+    char resposta[512] = "";  // Increased buffer size for multiple file paths
     int found = 0;
     int active_processes = 0;
 
