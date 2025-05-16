@@ -22,13 +22,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    printf("Pasta de documentos: %s\n", argv[1]);
+    // printf("Pasta de documentos: %s\n", argv[1]);
     
-    // Listar alguns arquivos no diretório para verificar
-    printf("Verificando arquivos no diretório...\n");
-    char command[512];
-    snprintf(command, sizeof(command), "ls -la %s | head -5", argv[1]);
-    system(command);
+    // // Listar alguns arquivos no diretório para verificar
+    // printf("Verificando arquivos no diretório...\n");
+    // char command[512];
+    // snprintf(command, sizeof(command), "ls -la %s | head -5", argv[1]);
+    // system(command);
 
     // Criar FIFO se não existir
     unlink(REQUEST_PIPE); // Remove o FIFO se já existir

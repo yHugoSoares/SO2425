@@ -111,7 +111,8 @@ int main(int argc, char *argv[]) {
     int n = read(fd_resposta, buffer, sizeof(buffer) - 1);
     if (n > 0) {
         buffer[n] = '\0';
-        printf("Resposta do servidor: %s\n", buffer);
+        printf("Resposta do servidor:\n%s", buffer);
+        printf("\n");
     }
 
     close(fd_resposta);

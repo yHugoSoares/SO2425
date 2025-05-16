@@ -58,12 +58,12 @@ list-files:
 
 clean:
 	@echo "[CLEAN] Cleaning build directory."
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -r $(BUILD_DIR) $(BIN_DIR)
 
 cleanall: clean
 	@echo "[CLEAN] Removing temporary files."
-	rm -rf $(TMP_DIR)
+	rm -r $(TMP_DIR)
 	@echo "[CLEAN] Removing metadata file."
-	rm -f metadata.dat
+	rm metadata.dat
 
 .PHONY: all clean cleanall prepare server list-files
