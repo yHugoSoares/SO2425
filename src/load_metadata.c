@@ -6,8 +6,8 @@
 
 // Carrega todos os documentos válidos do metadata.dat para um vetor
 int load_metadata_to_vector(Entry *array, int max_entries) {
-    FILE *file = fopen(METADATA_FILE, "rb");
-    if (!file) {
+    int fd = open(METADATA_FILE, O_RDONLY);
+    if (fd == -1) {
         perror("Erro ao abrir metadata.dat");
         return -1;
     }
@@ -15,7 +15,7 @@ int load_metadata_to_vector(Entry *array, int max_entries) {
     int count = 0;
     Entry temp;
 
-    while (fread(&temp, sizeof(Entry), 1, file) == 1) {
+    while (read(fd, &temp, sizeof(Entry)) == sizeof(Entry)) {
         if (temp.delete_flag == 0) {
             if (count >= max_entries) {
                 fprintf(stderr, "Limite de entradas atingido (%d)\n", max_entries);
@@ -25,6 +25,6 @@ int load_metadata_to_vector(Entry *array, int max_entries) {
         }
     }
 
-    fclose(file);
+    close(fd);
     return count;  // Retorna o número de entradas carregadas
 }

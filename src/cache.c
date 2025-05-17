@@ -56,15 +56,15 @@ int cache_load_from_file(const char *filename) {
     }
 
     // Open the file for reading
-    FILE *file = fopen(filename, "rb");
-    if (!file) {
+    int fd = open(filename, O_RDONLY);
+    if (fd == -1) {
         perror("Failed to open file for reading");
         return -1;
     }
 
     // Read entries from the file and add them to the cache
     Entry entry;
-    while (fread(&entry, sizeof(Entry), 1, file) == 1) {
+    while (read(fd, &entry, sizeof(Entry)) == sizeof(Entry)) {
         // Skip deleted entries
         if (entry.delete_flag) {
             continue;
@@ -74,7 +74,7 @@ int cache_load_from_file(const char *filename) {
         Entry *entry_copy = malloc(sizeof(Entry));
         if (!entry_copy) {
             perror("Failed to allocate memory for entry");
-            fclose(file);
+            close(fd);
             return -1;
         }
         memcpy(entry_copy, &entry, sizeof(Entry));
@@ -86,7 +86,7 @@ int cache_load_from_file(const char *filename) {
         }
     }
 
-    fclose(file);
+    close(fd);
     return 0;
 }
 
@@ -118,13 +118,13 @@ int cache_evict_entry() {
     CachePage *page = global_cache->pages[idx];
 
     // Write the entry back to metadata.dat
-    FILE *file = fopen(METADATA_FILE, "ab");
-    if (!file) {
+    int fd = open(METADATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd == -1) {
         perror("Failed to open metadata file for eviction");
         return -1;
     }
-    fwrite(page->entry, sizeof(Entry), 1, file);
-    fclose(file);
+    write(fd, page->entry, sizeof(Entry));
+    close(fd);
 
     // Remove from hash table
     g_hash_table_remove(global_cache->hash_table, &page->key);
@@ -228,25 +228,25 @@ int cache_load_metadata() {
     }
 
     // Open metadata file for reading
-    FILE *file = fopen(METADATA_FILE, "rb");
-    if (!file) {
+    int fd = open(METADATA_FILE, O_RDONLY);
+    if (fd == -1) {
         perror("Failed to open metadata file for reading");
         return -1;
     }
 
     // Read metadata entries and add them to the cache
     Entry entry;
-    while (fread(&entry, sizeof(Entry), 1, file) == 1) {
+    while (read(fd, &entry, sizeof(Entry)) == sizeof(Entry)) {
         Entry *entry_copy = malloc(sizeof(Entry));
         if (!entry_copy) {
             perror("Failed to allocate memory for metadata entry");
-            fclose(file);
+            close(fd);
             return -1;
         }
         memcpy(entry_copy, &entry, sizeof(Entry));
         cache_add_entry(entry_copy->delete_flag, entry_copy, 0);
     }
 
-    fclose(file);
+    close(fd);
     return 0;
 }

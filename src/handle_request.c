@@ -27,14 +27,15 @@ int file_exists(const char *path) {
 }
 
 // Função para salvar toda a cache no arquivo de metadados
+// ...existing code...
 void save_cache_to_metadata() {
     if (!global_cache) return;
     
     printf("Salvando cache no arquivo de metadados...\n");
     
     // Abre o arquivo para escrita (trunca o arquivo existente)
-    FILE *file = fopen(METADATA_FILE, "wb");
-    if (!file) {
+    int fd = open(METADATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1) {
         perror("Erro ao abrir arquivo de metadados para escrita");
         return;
     }
@@ -43,14 +44,19 @@ void save_cache_to_metadata() {
     for (int i = 0; i < global_cache->count; i++) {
         if (global_cache->pages[i] && global_cache->pages[i]->entry) {
             // Escreve a entrada no arquivo
-            fwrite(global_cache->pages[i]->entry, sizeof(Entry), 1, file);
-            printf("Salvando entrada %d no arquivo\n", global_cache->pages[i]->key);
+            ssize_t written = write(fd, global_cache->pages[i]->entry, sizeof(Entry));
+            if (written != sizeof(Entry)) {
+                perror("Erro ao escrever entrada no arquivo de metadados");
+            } else {
+                printf("Salvando entrada %d no arquivo\n", global_cache->pages[i]->key);
+            }
         }
     }
     
-    fclose(file);
+    close(fd);
     printf("Cache salva com sucesso!\n");
 }
+
 
 int handle_shutdown(Pedido pedido) {
     char resposta[] = "Server is shutting down...";
